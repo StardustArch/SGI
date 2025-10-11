@@ -1,0 +1,106 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: sia_db
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - sia_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d sia_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: sia_backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sia_network
+    # volumes:
+    #   - ./backend/src:/app/src
+    #   - ./backend/pom.xml:/app/pom.xml
+    #   - ./backend/mvnw:/app/mvnw
+    #   - ./backend/.mvn:/app/.mvn
+    #   - maven_cache:/root/.m2
+    working_dir: /app
+    # command: ./mvnw spring-boot:run
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  ai-service:
+    build: ./ai-service
+    container_name: sia_ai
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    networks:
+      - sia_network
+    volumes:
+      - ./ai-service:/app
+
+  frontend:
+    build: ./frontend
+    container_name: sia_frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - backend
+    networks:
+      - sia_network
+    volumes:
+      - ./frontend:/app
+    command: npm run dev -- --host 0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # caddy:
+  #   image: caddy:2
+  #   container_name: sia_caddy
+  #   ports:
+  #     - "8081:80"
+  #     - "8443:443"
+  #   volumes:
+  #     - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   depends_on:
+  #     - backend
+  #     - frontend
+  #   networks:
+  #     - sia_network
+
+volumes:
+  postgres_data:
+  # maven_cache:
+  # caddy_data:
+  # caddy_config:
+
+networks:
+  sia_network:
+    driver: bridge

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Denúncias Anônimas - TCC</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #667eea;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 2.2rem;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-left: 4px solid #28a745;
+        }
+
+        .status {
+            font-weight: bold;
+            color: #28a745;
+            font-size: 1.1rem;
+        }
+
+        .services {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .service {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .service.active {
+            border-color: #667eea;
+            background: #e3f2fd;
+        }
+
+        .endpoints {
+            text-align: left;
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-top: 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .endpoint {
+            margin: 0.5rem 0;
+            color: #495057;
+        }
+
+        .timestamp {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🛡️</div>
+        <h1>Sistema de Denúncias Anônimas</h1>
+        <p class="subtitle">Backend Spring Boot - TCC</p>
+        
+        <div class="status-card">
+            <div class="status">✅ SISTEMA OPERACIONAL</div>
+            <p>Backend rodando com sucesso!</p>
+        </div>
+
+        <div class="services">
+            <div class="service active">
+                <strong>Spring Boot</strong>
+                <div>Java 23</div>
+            </div>
+            <div class="service">
+                <strong>Docker</strong>
+                <div>Containerizado</div>
+            </div>
+            <div class="service">
+                <strong>PostgreSQL</strong>
+                <div>Em breve</div>
+            </div>
+        </div>
+
+        <div class="endpoints">
+            <strong>Endpoints disponíveis:</strong>
+            <div class="endpoint">📊 GET <a href="/api/health" target="_blank">/api/health</a> - Status do serviço</div>
+            <div class="endpoint">🔍 GET <a href="/api/reports" target="_blank">/api/reports</a> - Listar denúncias</div>
+            <div class="endpoint">📝 POST /api/reports - Submeter denúncia</div>
+            <div class="endpoint">📱 GET /api/reports/status/{token} - Consultar status</div>
+        </div>
+
+        <div class="timestamp">
+            Sistema iniciado em: <span id="currentTime"></span>
+        </div>
+    </div>
+
+    <script>
+        // Atualizar timestamp
+        document.getElementById('currentTime').textContent = new Date().toLocaleString('pt-BR');
+        
+        // Tentar buscar status da API
+        fetch('/api/health')
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Backend respondendo:', data);
+            })
+            .catch(error => {
+                console.log('⚠️ API health check falhou:', error);
+            });
+    </script>
+</body>
+</html>
