@@ -15,7 +15,9 @@ WORKDIR /app
 # Copiar requirements e instalar pacotes Python
 COPY requirements.txt .
 RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
+RUN python -m spacy download pt_core_news_sm
+# RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'); print('✅ Modelo sentence-transformers carregado')"
 
 # Copiar código do projeto
 COPY . .

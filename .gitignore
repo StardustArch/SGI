@@ -3,3 +3,4 @@ backend/target/
 ai-service/__pycache__/
 backend/.jdk/jdk-23_linux-x64_bin.deb
 .vscode/
+ai-service/app/services/__pycache__/

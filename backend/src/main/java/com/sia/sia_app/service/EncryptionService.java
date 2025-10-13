@@ -24,15 +24,24 @@ public class EncryptionService {
     public String decryptReport(String encryptedBlobBase64, String wrappedKeyBase64) {
         try {
             log.info("Iniciando descriptografia do relatório");
+            log.info("EncryptedBlob (Base64): {} caracteres", encryptedBlobBase64.length());
+            log.info("WrappedKey (Base64): {} caracteres", wrappedKeyBase64.length());
             
             // 1. Desembrulhar a DEK usando RSA
             byte[] wrappedKey = Base64.getDecoder().decode(wrappedKeyBase64);
-            byte[] dek = rsaKeyService.decryptWithPrivateKey(wrappedKey);
+            log.info("WrappedKey decodificado: {} bytes", wrappedKey.length);
             
+            byte[] dek = rsaKeyService.decryptWithPrivateKey(wrappedKey);
             log.info("DEK desembrulhada: {} bytes", dek.length);
             
-            // 2. Decodificar o blob cifrado (formato: IV + dados cifrados)
+            // 2. Decodificar o blob cifrado
             byte[] encryptedData = Base64.getDecoder().decode(encryptedBlobBase64);
+            log.info("EncryptedData decodificado: {} bytes", encryptedData.length);
+            
+            // Verificar se temos dados suficientes para IV + ciphertext
+            if (encryptedData.length < 12) {
+                throw new RuntimeException("Dados criptografados insuficientes para conter IV");
+            }
             
             // Extrair IV (primeiros 12 bytes) e dados cifrados
             byte[] iv = new byte[12];
@@ -40,12 +49,15 @@ public class EncryptionService {
             System.arraycopy(encryptedData, 0, iv, 0, 12);
             System.arraycopy(encryptedData, 12, ciphertext, 0, ciphertext.length);
             
-            log.info("IV extraído: {} bytes, Ciphertext: {} bytes", iv.length, ciphertext.length);
+            log.info("IV extraído: {} bytes", iv.length);
+            log.info("Ciphertext extraído: {} bytes", ciphertext.length);
             
             // 3. Descriptografar com AES-GCM
             String decryptedText = aesEncryptionService.decryptAesGcm(ciphertext, dek, iv);
             
             log.info("Texto descriptografado: {} caracteres", decryptedText.length());
+            log.info("Primeiros 50 caracteres: {}", 
+                decryptedText.length() > 50 ? decryptedText.substring(0, 50) + "..." : decryptedText);
             
             return decryptedText;
             

@@ -1,6 +1,5 @@
 package com.sia.sia_app.service;
 
-
 import com.sia.sia_app.dto.AiAnalysisRequest;
 import com.sia.sia_app.dto.AiAnalysisResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -14,23 +13,28 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class AiServiceClient {
 
-    @Value("${app.ai-service.url:http://ai-service:8000}")
-    private static String aiServiceUrl;
+    private final String aiServiceUrl;
+    private final RestTemplate restTemplate;
 
     @Autowired
-    private static RestTemplate restTemplate;
+    public AiServiceClient(
+            @Value("${app.ai-service.url:http://ai-service:8000}") String aiServiceUrl,
+            RestTemplate restTemplate) {
+        this.aiServiceUrl = aiServiceUrl;
+        this.restTemplate = restTemplate;
+        log.info("AiServiceClient inicializado com URL: {}", aiServiceUrl);
+    }
 
     public AiAnalysisResponse analyzeText(String text) {
         try {
             log.info("Enviando texto para análise IA: {} caracteres", text.length());
-            
+
             AiAnalysisRequest request = new AiAnalysisRequest(text);
-            
+
             ResponseEntity<AiAnalysisResponse> response = restTemplate.postForEntity(
-                aiServiceUrl + "/analyze",
-                request,
-                AiAnalysisResponse.class
-            );
+                    aiServiceUrl + "/analyze",
+                    request,
+                    AiAnalysisResponse.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 log.info("Análise IA concluída: {}", response.getBody().getCategory());
@@ -45,13 +49,14 @@ public class AiServiceClient {
         }
     }
 
-    public static boolean isHealthy() {
+    public boolean isHealthy() {
         try {
             ResponseEntity<String> response = restTemplate.getForEntity(
-                aiServiceUrl + "/health", 
-                String.class
-            );
-            return response.getStatusCode().is2xxSuccessful();
+                    aiServiceUrl + "/health",
+                    String.class);
+            boolean healthy = response.getStatusCode().is2xxSuccessful();
+            log.info("Health check AI Service: {}", healthy ? "HEALTHY" : "UNHEALTHY");
+            return healthy;
         } catch (Exception e) {
             log.warn("AI Service não está saudável: {}", e.getMessage());
             return false;
