@@ -37,11 +37,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core'
+    'core',
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -121,3 +125,39 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --- Configurações do Django REST Framework ---
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        # Define JWT como o nosso método de autenticação padrão
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+
+# --- Configurações do JWT (Tokens) ---
+# Isto implementa a sua "expiração"
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    # Duração do Token de Acesso (curto)
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    
+    # Duração do Token de Refresh (longo)
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+
+    # Isto é crucial porque usamos o 'email' como USERNAME_FIELD
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM_TYPE": "user_id",
+}
+
+# --- Configurações do CORS (Permitir o Nuxt) ---
+# Permitir que http://localhost:3000 (Nuxt) fale com http://localhost:8000 (Django)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://frontend:3000",
+]

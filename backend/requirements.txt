@@ -2,3 +2,6 @@ django
 djangorestframework
 psycopg2-binary
 django-cors-headers
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
