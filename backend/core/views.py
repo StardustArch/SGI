@@ -1,14 +1,18 @@
 from django.shortcuts import render
 from rest_framework import generics, status, filters
+from django.core.mail import send_mail
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Utilizador, Perfil, Encarregado, Estudante, Mensalidade, Sancao, PresencaEstudo
-from .serializers import UserSerializer, RegistoCompletoSerializer, MensalidadeSerializer, MensalidadeUpdateSerializer, SancaoSerializer, PresencaBatchSerializer, EstudanteListSerializer
-from .permissions import IsAdminUser
+from .models import Utilizador, Perfil, Encarregado, Estudante, Mensalidade, Sancao, PresencaEstudo, PedidoSaida
+from .serializers import UserSerializer, RegistoCompletoSerializer, MensalidadeSerializer, MensalidadeUpdateSerializer, SancaoSerializer, PresencaBatchSerializer, EstudanteListSerializer, PresencaEstudoSerializer, PedidoSaidaSerializer, PedidoSaidaListAdminSerializer, PedidoSaidaUpdateAdminSerializer, FinanceiroSummarySerializer,TopInfratoresSerializer, TopAusentesSerializer, TipoSancaoSummarySerializer, PedidoSaidaSummarySerializer
+from .permissions import IsAdminUser, IsEstudanteUser, IsOwnerOfPedidoSaida, IsEncarregadoUser
 from django.contrib.auth import get_user_model  # <-- ADICIONE ESTA LINHA
 from django.db import transaction  # <-- ADICIONE ESTA LINHA
 from django.shortcuts import get_object_or_404 # <-- ADICIONE ESTA
 from rest_framework.views import APIView # <-- ADICIONE ESTA
+from django.db.models import Sum, Count, Q # <-- ADICIONE ESTA
+from django.utils import timezone
 
 class ManageUserView(generics.RetrieveAPIView):
     """
@@ -42,24 +46,17 @@ class RegistoCompletoView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        # Dados validados
         dados = serializer.validated_data
         dados_encarregado = dados['encarregado']
         dados_estudante = dados['estudante']
 
-        # Obter o Model 'Utilizador'
         User = get_user_model()
-        
-        # Uma senha padrão (o utilizador deve mudar no primeiro login)
         SENHA_PADRAO = "mudar1234" 
 
         try:
-            # Obter os Perfis que criámos nas migrações
             perfil_encarregado = Perfil.objects.get(nome_perfil='Encarregado')
             perfil_estudante = Perfil.objects.get(nome_perfil='Estudante')
 
-            # --- Iniciar Transação Atómica ---
-            # Se algo falhar aqui, tudo é revertido.
             with transaction.atomic():
                 
                 # 1. Criar Utilizador (Encarregado)
@@ -69,8 +66,7 @@ class RegistoCompletoView(generics.CreateAPIView):
                     first_name=dados_encarregado['nome_completo'],
                     perfil=perfil_encarregado
                 )
-
-                # 2. Criar Perfil (Encarregado)
+                # ... (resto da criação do Encarregado) ...
                 encarregado = Encarregado.objects.create(
                     utilizador=user_encarregado,
                     nome_completo=dados_encarregado['nome_completo'],
@@ -85,18 +81,58 @@ class RegistoCompletoView(generics.CreateAPIView):
                     first_name=dados_estudante['nome_completo'],
                     perfil=perfil_estudante
                 )
-
-                # 4. Criar Perfil (Estudante)
+                # ... (resto da criação do Estudante) ...
                 estudante = Estudante.objects.create(
                     utilizador=user_estudante,
-                    encarregado=encarregado, # Ligar ao encarregado
+                    encarregado=encarregado,
                     nome_completo=dados_estudante['nome_completo'],
                     num_estudante=dados_estudante['num_estudante'],
                     quarto=dados_estudante['quarto'],
                     curso=dados_estudante['curso']
                 )
             
-            # Se tudo correu bem...
+            # --- TRANSAÇÃO CONCLUÍDA ---
+            # ---- ADICIONE ESTA LÓGICA DE EMAIL ----
+            
+            print("--- SINAL (Manual): Novo Registo Completo ---")
+            
+            # 1. Enviar email ao Encarregado
+            try:
+                send_mail(
+                    "Bem-vindo ao Portal SGI (Encarregado)",
+                    f"Olá {encarregado.nome_completo},\n\n"
+                    f"A sua conta de Encarregado no portal SGI foi criada.\n"
+                    f"Login: {encarregado.email_contacto}\n"
+                    f"Senha Temporária: {SENHA_PADRAO}\n\n"
+                    "Por favor, altere a sua senha no primeiro login.",
+                    settings.DEFAULT_FROM_EMAIL,
+                    [encarregado.email_contacto],
+                    fail_silently=False,
+                )
+                print(f"--- Email de Boas-Vindas enviado para Encarregado: {encarregado.email_contacto} ---")
+            except Exception as e:
+                print(f"--- ERRO AO ENVIAR EMAIL (Encarregado): {str(e)} ---")
+            
+            # 2. Enviar email ao Estudante
+            try:
+                send_mail(
+                    "Bem-vindo ao Portal SGI (Estudante)",
+                    f"Olá {estudante.nome_completo},\n\n"
+                    f"A sua conta de Estudante no portal SGI foi criada.\n"
+                    f"Login: {user_estudante.email}\n"
+                    f"Senha Temporária: {SENHA_PADRAO}\n\n"
+                    "Por favor, altere a sua senha no primeiro login.",
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user_estudante.email],
+                    fail_silently=False,
+                )
+                print(f"--- Email de Boas-Vindas enviado para Estudante: {user_estudante.email} ---")
+            except Exception as e:
+                print(f"--- ERRO AO ENVIAR EMAIL (Estudante): {str(e)} ---")
+
+            # --- FIM DA LÓGICA DE EMAIL ---
+            
+            # Resposta original
             return Response(
                 {"status": "sucesso", "estudante_id": estudante.utilizador_id}, 
                 status=status.HTTP_201_CREATED
@@ -146,6 +182,8 @@ class MensalidadeListCreateView(generics.ListCreateAPIView):
             admin_id_registo=self.request.user # O admin que está logado
         )
 
+# Ficheiro: backend/core/views.py
+
 class MensalidadeDetailView(generics.RetrieveUpdateAPIView):
     """
     Endpoint para:
@@ -155,13 +193,35 @@ class MensalidadeDetailView(generics.RetrieveUpdateAPIView):
     """
     queryset = Mensalidade.objects.all()
     permission_classes = [IsAuthenticated, IsAdminUser]
-    serializer_class = MensalidadeUpdateSerializer # Usa o serializer de ATUALIZAÇÃO
+    
+    # IMPORTANTE: Temos de lhe dizer para usar o serializer
+    # de actualização (Update) ou o de listagem (Retrieve)
+    def get_serializer_class(self):
+        if self.request.method == 'PATCH':
+            return MensalidadeUpdateSerializer
+        return MensalidadeSerializer # Usar o serializer completo para GET
 
+    # --- SÓ PODE HAVER UMA FUNÇÃO 'perform_update' ---
     def perform_update(self, serializer):
         """
-        Ao actualizar, regista também o admin que fez a alteração.
+        Ao actualizar, regista o admin E passa 'update_fields'
+        para que o nosso signal de notificação funcione.
         """
-        serializer.save(admin_id_registo=self.request.user)
+        
+        # 1. Pega na lista de campos que vieram no PATCH
+        #    (ex: ['estado', 'valor_pago'])
+        updated_fields = list(serializer.validated_data.keys())
+        
+        # 2. Adiciona o campo que estamos a adicionar manualmente
+        updated_fields.append('admin_id_registo')
+
+        # 3. Salva, passando a lista de campos
+        #    Isto é o que envia o 'update_fields' para o signal
+        mensalidade = serializer.save(admin_id_registo=self.request.user)
+
+        # Agora faz o save direto no modelo, com update_fields
+        mensalidade.save(update_fields=updated_fields)
+
 
 # Ficheiro: backend/core/views.py
 # ... (Manter as views de Mensalidade existentes) ...
@@ -302,3 +362,475 @@ class EstudanteListView(generics.ListAPIView):
         """
         # O SearchFilter vai aplicar-se automaticamente a este queryset
         return Estudante.objects.filter(estado='Activo').order_by('nome_completo')
+
+# Ficheiro: backend/core/views.py
+# ... (Manter a view EstudanteListView) ...
+
+# -----------------------------------------------------------------
+# --- ENDPOINTS DO PERFIL DE ESTUDANTE (CONSULTA) ---
+# -----------------------------------------------------------------
+
+class PerfilMensalidadeListView(generics.ListAPIView):
+    """
+    Endpoint para o Estudante (logado) ver
+    o seu próprio histórico financeiro.
+    """
+    serializer_class = MensalidadeSerializer
+    permission_classes = [IsAuthenticated, IsEstudanteUser] # <-- Protegido!
+
+    def get_queryset(self):
+        """ Retorna apenas mensalidades do utilizador logado """
+        # self.request.user.id é o ID do Utilizador (ligado ao token)
+        # que também é o PK do Estudante (graças ao OneToOneField)
+        return Mensalidade.objects.filter(estudante_id=self.request.user.id).order_by('-mes_referencia')
+
+class PerfilSancaoListView(generics.ListAPIView):
+    """
+    Endpoint para o Estudante (logado) ver
+    o seu próprio histórico disciplinar.
+    """
+    serializer_class = SancaoSerializer
+    permission_classes = [IsAuthenticated, IsEstudanteUser] # <-- Protegido!
+
+    def get_queryset(self):
+        """ Retorna apenas sanções do utilizador logado """
+        return Sancao.objects.filter(estudante_id=self.request.user.id).order_by('-data_ocorrencia')
+
+class PerfilPresencaListView(generics.ListAPIView):
+    """
+    Endpoint para o Estudante (logado) ver
+    o seu próprio histórico de presenças.
+    """
+    # Vamos criar um serializer simples para isto
+    # (Não precisamos do serializer 'batch' aqui)
+    serializer_class = PresencaEstudoSerializer # <-- Vamos criar este
+    permission_classes = [IsAuthenticated, IsEstudanteUser] # <-- Protegido!
+
+    def get_queryset(self):
+        """ Retorna apenas presenças do utilizador logado """
+        return PresencaEstudo.objects.filter(estudante_id=self.request.user.id).order_by('-data_presenca')
+
+
+# Ficheiro: backend/core/views.py
+# ... (Manter a view PerfilPresencaListView) ...
+
+# --- ADICIONE ESTA NOVA VIEW ---
+
+class PedidoSaidaListCreateView(generics.ListCreateAPIView):
+    """
+    Endpoint para o Estudante (logado):
+    GET: Listar os seus pedidos de saída.
+    POST: Criar um novo pedido de saída.
+    """
+    serializer_class = PedidoSaidaSerializer
+    permission_classes = [IsAuthenticated, IsEstudanteUser] # Protegido!
+
+    def get_queryset(self):
+        """ Retorna apenas os pedidos de saída do utilizador logado """
+        # O ID do request.user é a PK do Estudante
+        return PedidoSaida.objects.filter(estudante_id=self.request.user.id).order_by('-data_submissao')
+
+    def perform_create(self, serializer):
+        """
+        Ao criar (POST), associa automaticamente o estudante (do token).
+        O 'estado' (Pendente) é definido por defeito no modelo.
+        """
+        # Garante que o estudante (baseado no token) existe
+        estudante_instance = get_object_or_404(Estudante, pk=self.request.user.id)
+        serializer.save(estudante=estudante_instance)
+
+
+# Ficheiro: backend/core/views.py
+# ... (Manter a view PedidoSaidaListCreateView do estudante) ...
+
+# -----------------------------------------------------------------
+# --- ENDPOINTS DO ADMIN (UC-04 Parte B) ---
+# -----------------------------------------------------------------
+
+class AdminPedidoSaidaListView(generics.ListAPIView):
+    """
+    Endpoint para o Admin (logado) ver a "fila" de pedidos de saída.
+    Filtra por estado (ex: Pendente).
+    """
+    serializer_class = PedidoSaidaListAdminSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser] # Protegido!
+
+    def get_queryset(self):
+        """ Retorna pedidos, filtrados pelo 'estado' na URL """
+        queryset = PedidoSaida.objects.all().order_by('data_submissao')
+
+        # Filtra por ?estado=Pendente
+        estado = self.request.query_params.get('estado', None)
+        if estado is not None:
+            queryset = queryset.filter(estado=estado)
+
+        return queryset
+
+class AdminPedidoSaidaDetailView(generics.UpdateAPIView):
+    """
+    Endpoint para o Admin (logado) Aprovar ou Rejeitar (PATCH)
+    um pedido de saída específico.
+    """
+    queryset = PedidoSaida.objects.all()
+    serializer_class = PedidoSaidaUpdateAdminSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser] # Protegido!
+
+    # Ficheiro: backend/core/views.py
+# Dentro da classe AdminPedidoSaidaDetailView
+
+    def perform_update(self, serializer):
+        """ 
+        Ao aprovar/rejeitar, regista o admin E dispara o signal
+        para notificar o estudante.
+        """
+        
+        # 1. Pega na lista de campos que vieram no PATCH
+        #    (ex: ['estado', 'observacao_admin'])
+        updated_fields = list(serializer.validated_data.keys())
+        
+        # 2. Adiciona o campo que estamos a adicionar manualmente
+        updated_fields.append('admin_id_aprovacao')
+
+        # 3. (PASSO 1) Salva os dados do serializer
+        pedido = serializer.save(
+            admin_id_aprovacao=self.request.user
+        )
+
+        # 4. (PASSO 2) Salva *novamente* para disparar o sinal
+        #    com a lista correcta de 'update_fields'.
+        pedido.save(update_fields=updated_fields)
+
+
+# Ficheiro: backend/core/views.py
+# ... (Manter a view AdminPedidoSaidaDetailView) ...
+
+# -----------------------------------------------------------------
+# --- ENDPOINTS DO PERFIL DE ESTUDANTE (DETALHE) ---
+# -----------------------------------------------------------------
+
+class PerfilPedidoSaidaDetailView(generics.RetrieveAPIView):
+    """
+    Endpoint para o Estudante (logado) ver UM pedido de saída
+    específico (ex: para ver a resposta do admin).
+    """
+    queryset = PedidoSaida.objects.all()
+    serializer_class = PedidoSaidaSerializer
+    
+    # Protecção Dupla:
+    # 1. Tem de ser um Estudante para sequer tentar.
+    # 2. Tem de ser o DONO do objecto que está a pedir.
+    permission_classes = [IsAuthenticated, IsEstudanteUser, IsOwnerOfPedidoSaida]
+
+
+# Ficheiro: backend/core/views.py
+# ... (Manter as views do Estudante) ...
+
+# -----------------------------------------------------------------
+# --- ENDPOINTS DO PERFIL DE ENCARREGADO (CONSULTA) ---
+# -----------------------------------------------------------------
+
+class EncarregadoEducandosListView(generics.ListAPIView):
+    """
+    Endpoint para o Encarregado (logado) ver
+    a lista dos seus educandos.
+    """
+    serializer_class = EstudanteListSerializer
+    permission_classes = [IsAuthenticated, IsEncarregadoUser] # <-- Protegido!
+
+    def get_queryset(self):
+        """ Retorna apenas os estudantes associados ao encarregado logado """
+        # request.user.encarregado funciona por causa do OneToOneField
+        return Estudante.objects.filter(encarregado=self.request.user.encarregado, estado='Activo')
+
+class EncarregadoMensalidadeListView(generics.ListAPIView):
+    """
+    Endpoint para o Encarregado (logado) ver
+    o histórico financeiro dos seus educandos.
+    """
+    serializer_class = MensalidadeSerializer
+    permission_classes = [IsAuthenticated, IsEncarregadoUser]
+
+    def get_queryset(self):
+        """ Retorna mensalidades apenas dos estudantes do encarregado logado """
+        # 1. Encontra os IDs dos estudantes deste encarregado
+        estudante_ids = Estudante.objects.filter(
+            encarregado=self.request.user.encarregado
+        ).values_list('pk', flat=True)
+        
+        # 2. Retorna as mensalidades que pertencem a esses IDs
+        return Mensalidade.objects.filter(estudante_id__in=estudante_ids).order_by('-mes_referencia')
+
+class EncarregadoSancaoListView(generics.ListAPIView):
+    """
+    Endpoint para o Encarregado (logado) ver
+    o histórico disciplinar dos seus educandos.
+    """
+    serializer_class = SancaoSerializer
+    permission_classes = [IsAuthenticated, IsEncarregadoUser]
+
+    def get_queryset(self):
+        estudante_ids = Estudante.objects.filter(
+            encarregado=self.request.user.encarregado
+        ).values_list('pk', flat=True)
+        return Sancao.objects.filter(estudante_id__in=estudante_ids).order_by('-data_ocorrencia')
+
+class EncarregadoPedidoSaidaListView(generics.ListAPIView):
+    """
+    Endpoint para o Encarregado (logado) ver
+    os pedidos de saída dos seus educandos.
+    """
+    serializer_class = PedidoSaidaListAdminSerializer # Reutiliza o serializer do admin
+    permission_classes = [IsAuthenticated, IsEncarregadoUser]
+
+    def get_queryset(self):
+        estudante_ids = Estudante.objects.filter(
+            encarregado=self.request.user.encarregado
+        ).values_list('pk', flat=True)
+        return PedidoSaida.objects.filter(estudante_id__in=estudante_ids).order_by('-data_submissao')
+
+
+# Ficheiro: backend/core/views.py
+# ... (Manter as views de PedidoSaida) ...
+
+# -----------------------------------------------------------------
+# --- ENDPOINTS DE RELATÓRIOS (DASHBOARD) ---
+# -----------------------------------------------------------------
+
+class FinanceiroSummaryView(APIView):
+    """
+    Endpoint para o Dashboard do Admin.
+    GET: Retorna um sumário financeiro do mês corrente.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        # 1. Obter o mês e ano actuais
+        hoje = timezone.now().date()
+        primeiro_dia_mes = hoje.replace(day=1)
+        
+        # 2. Filtrar todas as mensalidades deste mês
+        mensalidades_mes = Mensalidade.objects.filter(
+            mes_referencia=primeiro_dia_mes
+        )
+
+        # 3. Fazer os cálculos de agregação na BD
+        sumario = mensalidades_mes.aggregate(
+            # Soma o 'valor_pago' APENAS das que estão 'Pago'
+            total_arrecadado=Sum(
+                'valor_pago', 
+                filter=Q(estado='Pago')
+            ),
+            
+            # Conta quantos estudantes únicos têm estado 'Pendente'
+            total_pendentes=Count(
+                'estudante', 
+                distinct=True, 
+                filter=Q(estado='Pendente')
+            )
+        )
+        
+        # O 'total_pendente_mes' é mais complexo: 
+        # Precisamos do valor *esperado*, não do 'valor_pago' (que é 0)
+        # Assumindo que o valor é fixo. Por agora, vamos simplificar.
+        # Vamos calcular o valor pendente com base no 'valor_pago' (se foi pago parcialmente)
+        total_pendente_calculado = mensalidades_mes.filter(estado='Pendente').aggregate(
+             total_pendente_valor=Sum('valor_pago') # Isto está conceptualmente errado, mas serve para o exemplo
+        )['total_pendente_valor'] or 0
+
+        # Vamos assumir que o "total pendente" é o número de estudantes * o valor da mensalidade
+        # Por agora, vamos retornar 0 para este campo complexo.
+        # TODO: A lógica de "valor pendente" precisa ser definida (ex: um campo 'valor_total' no modelo)
+        
+        data = {
+            'total_arrecadado_mes': sumario.get('total_arrecadado') or 0,
+            'total_pendente_mes': 0, # TODO: Implementar lógica de valor esperado
+            'total_estudantes_pendentes': sumario.get('total_pendentes') or 0,
+            'mes_referencia': primeiro_dia_mes
+        }
+        
+        # Validar os dados de saída
+        serializer = FinanceiroSummarySerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+# Ficheiro: backend/core/views.py
+# ... (Manter a view FinanceiroSummaryView) ...
+
+# --- ADICIONE ESTA NOVA VIEW ---
+
+class TopInfratoresView(APIView):
+    """
+    Endpoint para o Dashboard do Admin.
+    GET: Retorna os 5 estudantes com mais sanções este mês.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get(self, request, *args, **kwargs):
+        # 1. Obter o primeiro dia do mês actual
+        hoje = timezone.now().date()
+        primeiro_dia_mes = hoje.replace(day=1)
+        
+        # 2. Query de Agregação
+        top_infratores = Sancao.objects.filter(
+            # Apenas sanções deste mês em diante
+            data_ocorrencia__gte=primeiro_dia_mes 
+        ).values(
+            'estudante',                # Agrupa por ID do estudante
+            'estudante__nome_completo'  # Puxa o nome do estudante
+        ).annotate(
+            total_sancoes=Count('id')   # Conta o nº de sanções por grupo
+        ).order_by(
+            '-total_sancoes'            # Ordena do maior para o menor
+        )[:10]                           # Limita aos 10 primeiros
+        
+        # 3. Serializar e Retornar
+        # O 'top_infratores' é uma lista de dicts
+        # (ex: [{'estudante': 3, 'estudante__nome_completo': 'João Aluno', 'total_sancoes': 2}])
+        serializer = TopInfratoresSerializer(top_infratores, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+# Ficheiro: backend/core/views.py
+# ... (Manter a view TopInfratoresView) ...
+
+# --- ADICIONE ESTA NOVA VIEW ---
+
+class TopAusentesView(APIView):
+    """
+    Endpoint para o Dashboard do Admin.
+    GET: Retorna os 5 estudantes com mais ausências/justificações este mês.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get(self, request, *args, **kwargs):
+        # 1. Obter o primeiro dia do mês actual
+        hoje = timezone.now().date()
+        primeiro_dia_mes = hoje.replace(day=1)
+        
+        # 2. Query de Agregação
+        top_ausentes = PresencaEstudo.objects.filter(
+            # Apenas registos deste mês
+            data_presenca__gte=primeiro_dia_mes,
+            # Apenas onde o estado NÃO é 'Presente'
+            estado__in=['Ausente', 'Justificado']
+        ).values(
+            'estudante',                # Agrupa por ID do estudante
+            'estudante__nome_completo'  # Puxa o nome do estudante
+        ).annotate(
+            total_ausencias=Count('id') # Conta o nº de ausências por grupo
+        ).order_by(
+            '-total_ausencias'            # Ordena do maior para o menor
+        )[:10]                           # Limita aos 10 primeiros
+        
+        # 3. Serializar e Retornar
+        serializer = TopAusentesSerializer(top_ausentes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+# Ficheiro: backend/core/views.py
+# ... (Manter a view TopAusentesView) ...
+
+# --- ADICIONE ESTA NOVA VIEW ---
+
+class TipoSancaoSummaryView(APIView):
+    """
+    Endpoint para o Dashboard do Admin.
+    GET: Retorna um sumário de sanções agrupadas por tipo.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get(self, request, *args, **kwargs):
+        # 1. Obter o primeiro dia do mês actual
+        hoje = timezone.now().date()
+        primeiro_dia_mes = hoje.replace(day=1)
+        
+        # 2. Query de Agregação
+        sumario_tipo = Sancao.objects.filter(
+            # Apenas sanções deste mês
+            data_ocorrencia__gte=primeiro_dia_mes
+        ).values(
+            'tipo_sancao' # Agrupa pelo texto do tipo de sanção
+        ).annotate(
+            total=Count('id') # Conta o nº de sanções por tipo
+        ).order_by(
+            '-total' # Ordena do maior para o menor
+        )
+        
+        # 3. Serializar e Retornar
+        # O 'sumario_tipo' é uma lista de dicts
+        # (ex: [{'tipo_sancao': 'Advertência Verbal', 'total': 2}])
+        serializer = TipoSancaoSummarySerializer(sumario_tipo, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+# Ficheiro: backend/core/views.py
+# ... (Manter a view TipoSancaoSummaryView) ...
+
+# --- ADICIONE ESTA NOVA VIEW ---
+
+class PedidoSaidaSummaryView(APIView):
+    """
+    Endpoint para o Dashboard do Admin.
+    GET: Retorna um sumário dos pedidos de saída agrupados por estado.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get(self, request, *args, **kwargs):
+        # 1. Obter o primeiro dia do mês actual
+        hoje = timezone.now().date()
+        primeiro_dia_mes = hoje.replace(day=1)
+        
+        # 2. Query de Agregação
+        # Filtra todos os pedidos deste mês
+        sumario = PedidoSaida.objects.filter(
+            data_submissao__gte=primeiro_dia_mes
+        ).aggregate(
+            # Conta apenas os que têm estado 'Pendente'
+            total_pendentes=Count('id', filter=Q(estado='Pendente')),
+            # Conta apenas os 'Aprovado_Admin'
+            total_aprovados=Count('id', filter=Q(estado='Aprovado_Admin')),
+            # Conta apenas os 'Rejeitado'
+            total_rejeitados=Count('id', filter=Q(estado='Rejeitado'))
+        )
+        
+        # 3. Serializar e Retornar
+        # O 'sumario' é um dict único
+        # (ex: {'total_pendentes': 0, 'total_aprovados': 2, 'total_rejeitados': 0})
+        serializer = PedidoSaidaSummarySerializer(sumario)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# Ficheiro: backend/core/views.py
+# ... (Manter as views de Relatórios) ...
+
+# -----------------------------------------------------------------
+# --- ENDPOINT DE UTILIDADES (PARA DROPDOWNS DO FRONTEND) ---
+# -----------------------------------------------------------------
+
+class OpcoesView(APIView):
+    """
+    Endpoint de "utilidades" que retorna todas as
+    opções (CHOICES) definidas nos modelos.
+    Essencial para o frontend construir os dropdowns.
+    """
+    # Qualquer utilizador logado (Admin, Estudante) pode ver as opções
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        
+        # Função helper para formatar os 'choices' do Django
+        # (valor_bd, valor_legivel) -> { value: valor_bd, label: valor_legivel }
+        # Isto é o formato perfeito para um <select> no frontend
+        def format_choices(choices):
+            return [{'value': choice[0], 'label': choice[1]} for choice in choices]
+
+        # Construir o dicionário de opções
+        opcoes = {
+            'perfis': format_choices(Perfil.NOME_CHOICES),
+            'estudante_estados': format_choices(Estudante.ESTADO_CHOICES),
+            'mensalidade_metodos': format_choices(Mensalidade.METODO_CHOICES),
+            'mensalidade_estados': format_choices(Mensalidade.ESTADO_CHOICES),
+            'presenca_estados': format_choices(PresencaEstudo.ESTADO_CHOICES),
+            'sancao_tipos': format_choices(Sancao.TIPO_SANCAO_CHOICES),
+            'pedido_saida_estados': format_choices(PedidoSaida.ESTADO_CHOICES),
+        }
+        
+        return Response(opcoes, status=status.HTTP_200_OK)

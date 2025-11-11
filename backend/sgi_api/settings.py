@@ -154,6 +154,8 @@ SIMPLE_JWT = {
     "USER_ID_CLAIM_TYPE": "user_id",
 }
 
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'admin@sgi-iicb.com'
 # --- Configurações do CORS (Permitir o Nuxt) ---
 # Permitir que http://localhost:3000 (Nuxt) fale com http://localhost:8000 (Django)
 CORS_ALLOWED_ORIGINS = [

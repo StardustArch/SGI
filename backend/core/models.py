@@ -158,10 +158,19 @@ class Sancao(models.Model):
     """ Histórico disciplinar do estudante. """
     estudante = models.ForeignKey(Estudante, on_delete=models.CASCADE, related_name="sancoes")
     admin_id_registo = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="sancoes_aplicadas")
-    
+    TIPO_SANCAO_CHOICES = [
+        ('Advertência Verbal', 'Advertência Verbal'),
+        ('Trabalho Comunitário', 'Trabalho Comunitário'),
+        ('Suspensão de Saída', 'Suspensão de Saída'),
+        ('Outro', 'Outro'),
+    ]
+    # ---- MODIFIQUE ESTA LINHA ----
+    tipo_sancao = models.CharField(
+        max_length=100, 
+        choices=TIPO_SANCAO_CHOICES # <-- Adicionar isto
+    )
     data_ocorrencia = models.DateField()
     descricao = models.TextField()
-    tipo_sancao = models.CharField(max_length=100) # Ex: 'Advertência Verbal'
     notificado_encarregado = models.BooleanField(default=False)
 
     def __str__(self):

@@ -44,4 +44,42 @@ urlpatterns = [
         views.PresencaBatchCreateView.as_view(), 
         name='presenca-batch'
     ),
+    # GET: Lista as minhas mensalidades
+    path('perfil/mensalidades/', views.PerfilMensalidadeListView.as_view(), name='perfil-mensalidades'),
+    
+    # GET: Lista as minhas sanções
+    path('perfil/sancoes/', views.PerfilSancaoListView.as_view(), name='perfil-sancoes'),
+    
+    # GET: Lista as minhas presenças
+    path('perfil/presencas/', views.PerfilPresencaListView.as_view(), name='perfil-presencas'),
+
+    # GET: Lista os meus pedidos de saída
+    # POST: Cria um novo pedido de saída (UC-04 Parte A)
+    path('perfil/pedidos-saida/', views.PedidoSaidaListCreateView.as_view(), name='perfil-pedidos-saida'),
+
+    # GET: (Admin) Lista todos os pedidos (filtra por ?estado=Pendente)
+    path('admin/pedidos-saida/', views.AdminPedidoSaidaListView.as_view(), name='admin-lista-pedidos'),
+
+    # PATCH: (Admin) Aprova/Rejeita um pedido específico
+    path('admin/pedidos-saida/<int:pk>/', views.AdminPedidoSaidaDetailView.as_view(), name='admin-detalhe-pedido'),
+
+    path('perfil/pedidos-saida/<int:pk>/', views.PerfilPedidoSaidaDetailView.as_view(), name='perfil-detalhe-pedido'),
+    # GET: Lista os meus educandos
+    path('perfil-encarregado/meus-educandos/', views.EncarregadoEducandosListView.as_view(), name='encarregado-educandos'),
+    
+    # GET: Lista o histórico financeiro dos meus educandos
+    path('perfil-encarregado/mensalidades/', views.EncarregadoMensalidadeListView.as_view(), name='encarregado-mensalidades'),
+    
+    # GET: Lista o histórico disciplinar dos meus educandos
+    path('perfil-encarregado/sancoes/', views.EncarregadoSancaoListView.as_view(), name='encarregado-sancoes'),
+    
+    # GET: Lista os pedidos de saída dos meus educandos
+    path('perfil-encarregado/pedidos-saida/', views.EncarregadoPedidoSaidaListView.as_view(), name='encarregado-pedidos-saida'),
+    path('relatorios/financeiro/', views.FinanceiroSummaryView.as_view(), name='relatorio-financeiro'),
+    path('relatorios/disciplina/top-10/', views.TopInfratoresView.as_view(), name='relatorio-top-infratores'),
+    path('relatorios/assiduidade/top-ausentes/', views.TopAusentesView.as_view(), name='relatorio-top-ausentes'),
+    path('relatorios/disciplina/por-tipo/', views.TipoSancaoSummaryView.as_view(), name='relatorio-por-tipo'),
+    path('relatorios/pedidos-saida/sumario/', views.PedidoSaidaSummaryView.as_view(), name='relatorio-pedidos-sumario'),
+    path('opcoes/', views.OpcoesView.as_view(), name='opcoes-dropdown'),
+
 ]

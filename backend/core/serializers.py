@@ -1,6 +1,6 @@
 # Ficheiro: backend/core/serializers.py
 from rest_framework import serializers
-from .models import Utilizador, Mensalidade, Sancao, Estudante,  PresencaEstudo
+from .models import Utilizador, Mensalidade, Sancao, Estudante, PresencaEstudo, PedidoSaida
 
 class UserSerializer(serializers.ModelSerializer):
     """ Serializer para o nosso modelo Utilizador """
@@ -92,6 +92,21 @@ class SancaoSerializer(serializers.ModelSerializer):
         # O 'estudante' e 'admin' serão preenchidos automaticamente.
         read_only_fields = ['estudante', 'admin_id_registo']
 
+
+# Ficheiro: backend/core/serializers.py
+# ... (Manter o SancaoSerializer) ...
+
+# --- ADICIONE ESTE NOVO SERIALIZER ---
+
+class PresencaEstudoSerializer(serializers.ModelSerializer):
+    """
+    Serializer para LISTAR o histórico de presenças.
+    """
+    class Meta:
+        model = PresencaEstudo
+        fields = ['id', 'data_presenca', 'estado']
+
+# ... (Manter o PresencaBatchSerializer) ...
 # Ficheiro: backend/core/serializers.py
 # ... (Manter os serializers Sancao existentes) ...
 
@@ -151,3 +166,151 @@ class EstudanteListSerializer(serializers.ModelSerializer):
             'estado',
             'encarregado_nome'
         ]
+
+
+# Ficheiro: backend/core/serializers.py
+# ... (Manter o EstudanteListSerializer) ...
+
+# --- ADICIONE ESTE NOVO SERIALIZER ---
+
+class PedidoSaidaSerializer(serializers.ModelSerializer):
+    """
+    Serializer para o Estudante LISTAR e CRIAR os seus Pedidos de Saída.
+    """
+    class Meta:
+        model = PedidoSaida
+        fields = [
+            'id',
+            'estudante',
+            'data_submissao',
+            'data_saida_pretendida',
+            'data_retorno_pretendida',
+            'motivo',
+            'estado',
+            'admin_id_aprovacao', # Para o estudante ver quem aprovou
+            'observacao_admin'    # Para o estudante ver o motivo da rejeição
+        ]
+        
+        # O estudante só pode enviar as datas e o motivo.
+        # O resto é preenchido pelo sistema.
+        read_only_fields = [
+            'estudante', 
+            'data_submissao', 
+            'estado', 
+            'admin_id_aprovacao', 
+            'observacao_admin'
+        ]
+
+
+# Ficheiro: backend/core/serializers.py
+# ... (Manter o PedidoSaidaSerializer) ...
+
+# --- ADICIONE ESTES NOVOS SERIALIZERS (PARA O ADMIN) ---
+
+class PedidoSaidaListAdminSerializer(serializers.ModelSerializer):
+    """
+    Serializer para o Admin LISTAR todos os pedidos pendentes.
+    Mostra o nome do estudante para contexto.
+    """
+    # Puxa o nome do estudante da relação
+    estudante_nome = serializers.CharField(source='estudante.nome_completo', read_only=True)
+
+    class Meta:
+        model = PedidoSaida
+        fields = [
+            'id',
+            'estudante_nome', # <-- Importante para o admin
+            'estudante',
+            'data_submissao',
+            'data_saida_pretendida',
+            'data_retorno_pretendida',
+            'motivo',
+            'estado'
+        ]
+
+class PedidoSaidaUpdateAdminSerializer(serializers.ModelSerializer):
+    """
+    Serializer para o Admin ATUALIZAR (Aprovar/Rejeitar) um pedido.
+    """
+    class Meta:
+        model = PedidoSaida
+        # O Admin só pode mudar o estado e adicionar uma observação
+        fields = ['estado', 'observacao_admin']
+
+        # Garante que o estado seja válido (não pode ser "Pendente")
+        def validate_estado(self, value):
+            if value not in ['Aprovado_Admin', 'Rejeitado']:
+                raise serializers.ValidationError("Estado inválido. Use 'Aprovado_Admin' ou 'Rejeitado'.")
+            return value
+
+
+# Ficheiro: backend/core/serializers.py
+# ... (Manter os serializers existentes) ...
+
+# --- ADICIONE ESTE NOVO SERIALIZER ---
+
+class FinanceiroSummarySerializer(serializers.Serializer):
+    """
+    Serializer para o nosso Dashboard de Relatório Financeiro.
+    Não é um ModelSerializer porque não mapeia para um modelo.
+    """
+    total_arrecadado_mes = serializers.DecimalField(max_digits=12, decimal_places=2)
+    total_pendente_mes = serializers.DecimalField(max_digits=12, decimal_places=2)
+    total_estudantes_pendentes = serializers.IntegerField()
+    mes_referencia = serializers.DateField()
+
+class TopInfratoresSerializer(serializers.Serializer):
+    """
+    Serializer para o Relatório 'Top 5 Infratores'.
+    Mostra os estudantes com mais sanções.
+    """
+    # A nossa 'query' (na view) vai gerar estes campos:
+    
+    # Mapeia o 'estudante' (ID) da query para 'estudante_id' no JSON
+    estudante_id = serializers.IntegerField(source='estudante') 
+    
+    # Mapeia o 'estudante__nome_completo' da query
+    nome_completo = serializers.CharField(source='estudante__nome_completo')
+    
+    # Mapeia o 'total_sancoes' que vamos 'anotar'
+    total_sancoes = serializers.IntegerField()
+
+# Ficheiro: backend/core/serializers.py
+# ... (Manter o TopInfratoresSerializer) ...
+
+# --- ADICIONE ESTE NOVO SERIALIZER ---
+
+class TopAusentesSerializer(serializers.Serializer):
+    """
+    Serializer para o Relatório 'Top 5 Ausentes'.
+    Mostra os estudantes com mais ausências/justificações.
+    """
+    estudante_id = serializers.IntegerField(source='estudante')
+    nome_completo = serializers.CharField(source='estudante__nome_completo')
+    total_ausencias = serializers.IntegerField()
+
+# Ficheiro: backend/core/serializers.py
+# ... (Manter o TopAusentesSerializer) ...
+
+# --- ADICIONE ESTE NOVO SERIALIZER ---
+
+class TipoSancaoSummarySerializer(serializers.Serializer):
+    """
+    Serializer para o Relatório 'Sanções por Tipo'.
+    Mostra o total de cada tipo de sanção.
+    """
+    tipo_sancao = serializers.CharField()
+    total = serializers.IntegerField()
+
+# Ficheiro: backend/core/serializers.py
+# ... (Manter o TipoSancaoSummarySerializer) ...
+
+# --- ADICIONE ESTE NOVO SERIALIZER ---
+
+class PedidoSaidaSummarySerializer(serializers.Serializer):
+    """
+    Serializer para o Relatório 'Sumário de Pedidos de Saída'.
+    """
+    total_pendentes = serializers.IntegerField()
+    total_aprovados = serializers.IntegerField()
+    total_rejeitados = serializers.IntegerField()
