@@ -314,3 +314,115 @@ class PedidoSaidaSummarySerializer(serializers.Serializer):
     total_pendentes = serializers.IntegerField()
     total_aprovados = serializers.IntegerField()
     total_rejeitados = serializers.IntegerField()
+
+
+class EstudanteDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer para GET (detalhe) e PATCH (update) de um Estudante.
+    """
+    # Puxa campos read-only do modelo Utilizador e Encarregado
+    email = serializers.EmailField(source='utilizador.email', read_only=True)
+    encarregado_nome = serializers.CharField(source='encarregado.nome_completo', read_only=True)
+
+    class Meta:
+        model = Estudante
+        fields = [
+            'utilizador',       # A PK (id do utilizador)
+            'email',            # O email (read-only)
+            'nome_completo',    # Editável
+            'num_estudante',    # Editável
+            'quarto',           # Editável
+            'curso',            # Editável
+            'estado',           # Editável (Activo/Inactivo)
+            'encarregado',      # ID do encarregado (read-only)
+            'encarregado_nome'  # Nome do encarregado (read-only)
+        ]
+        # O admin não pode mudar o ID do estudante, o email ou o encarregado
+        # através deste endpoint.
+        read_only_fields = ['utilizador', 'email', 'encarregado', 'encarregado_nome']
+
+class SancaoUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer para o Admin ATUALIZAR (PATCH) uma sanção.
+    """
+    class Meta:
+        model = Sancao
+        # Campos que o admin pode editar
+        fields = [
+            'data_ocorrencia', 
+            'descricao', 
+            'tipo_sancao',
+            'notificado_encarregado'
+        ]
+
+class PresencaEstudoUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer para o Admin ATUALIZAR (PATCH) um registo de presença.
+    Permite apenas alterar o estado.
+    """
+    class Meta:
+        model = PresencaEstudo
+        # O Admin só pode (e deve) alterar o estado
+        fields = ['estado']
+
+class EstudantePerfilSerializer(serializers.ModelSerializer):
+    """
+    Serializer para o Estudante (logado) ver
+    os seus próprios dados de perfil.
+    """
+    # Puxa campos read-only do modelo Utilizador e Encarregado
+    email = serializers.EmailField(source='utilizador.email', read_only=True)
+    encarregado_nome = serializers.CharField(source='encarregado.nome_completo', read_only=True)
+    encarregado_telefone = serializers.CharField(source='encarregado.telefone_principal', read_only=True)
+
+    class Meta:
+        model = Estudante
+        fields = [
+            'utilizador_id',    # A PK
+            'email',
+            'nome_completo',
+            'num_estudante',
+            'quarto',
+            'curso',
+            'estado',
+            'encarregado_nome',
+            'encarregado_telefone'
+        ]
+        # O estudante não pode editar nenhum destes campos, só ler.
+        read_only_fields = fields
+
+# --- ADICIONE ESTE NOVO SERIALIZER ---
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """
+    Serializer para o endpoint de mudança de senha.
+    Exige a senha antiga e a nova.
+    """
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+    def validate_old_password(self, value):
+        """
+        Valida se a 'old_password' fornecida é a correta.
+        """
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("A sua senha antiga está incorreta.")
+        return value
+
+    def validate_new_password(self, value):
+        """
+        Valida a força da nova senha (pode ser melhorado com validadores do Django).
+        """
+        if len(value) < 8:
+            raise serializers.ValidationError("A nova senha deve ter pelo menos 8 caracteres.")
+        return value
+
+    def save(self):
+        """
+        Define a nova senha para o utilizador.
+        """
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user

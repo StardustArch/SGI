@@ -14,5 +14,15 @@
     {
       "path": "./.nuxt/tsconfig.node.json"
     }
-  ]
+  ],
+  "compilerOptions": {
+    "types": [
+      "@types/node",
+      "@nuxt/types",
+      "@nuxt/schema",
+      "@nuxt/kit",
+      "nuxt"
+    ]
+  },
+
 }

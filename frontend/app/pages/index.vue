@@ -1,79 +1,87 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
-    <div class="container mx-auto px-4 max-w-4xl">
-      <!-- Header -->
-      <header class="text-center mb-12">
-        <div class="flex justify-center items-center mb-4">
-          <div class="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center">
-            <span class="text-2xl text-white">🛡️</span>
-          </div>
+  <!-- Fundo que se adapta automaticamente ao tema do sistema -->
+  <div class="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+    
+    <!-- Caixa de Login -->
+    <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+      
+      <h1 class="text-2xl font-bold text-center text-gray-900 dark:text-white">
+        Login SGI
+      </h1>
+      
+      <!-- Formulário -->
+      <form @submit.prevent="handleLogin" class="space-y-6">
+        <!-- Campo de Email -->
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+          <input 
+            v-model="email" 
+            id="email" 
+            type="email" 
+            required 
+            class="w-full px-3 py-2 mt-1 border rounded-md shadow-sm bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          >
         </div>
-        <h1 class="text-4xl font-bold text-gray-800 mb-4">
-          Sistema de Denúncias Anônimas
-        </h1>
-        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-          Denuncie de forma 100% anônima e segura. Sua identidade será preservada.
-        </p>
-      </header>
-
-      <!-- Main Content -->
-      <div class="grid md:grid-cols-3 gap-8">
-        <!-- Form Section -->
-        <div class="md:col-span-2">
-          <div class="bg-white rounded-xl shadow-lg p-6">
-            <SubmissionForm />
-          </div>
+        
+        <!-- Campo de Senha -->
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Senha</label>
+          <input 
+            v-model="password" 
+            id="password" 
+            type="password" 
+            required 
+            class="w-full px-3 py-2 mt-1 border rounded-md shadow-sm bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          >
         </div>
 
-        <!-- Info Section -->
-        <div class="space-y-6">
-          <!-- Security Info -->
-          <div class="bg-white rounded-xl shadow-lg p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-              <span class="text-green-500 mr-2">✓</span>
-              Segurança Garantida
-            </h3>
-            <ul class="text-sm text-gray-600 space-y-2">
-              <li class="flex items-start">
-                <span class="text-green-500 mr-2 mt-0.5">•</span>
-                <span>Criptografia ponta a ponta</span>
-              </li>
-              <li class="flex items-start">
-                <span class="text-green-500 mr-2 mt-0.5">•</span>
-                <span>Nenhum dado pessoal coletado</span>
-              </li>
-              <li class="flex items-start">
-                <span class="text-green-500 mr-2 mt-0.5">•</span>
-                <span>Token único de acompanhamento</span>
-              </li>
-            </ul>
-          </div>
-
-          <!-- Status Check -->
-          <div class="bg-white rounded-xl shadow-lg p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-3">
-              Consultar Denúncia
-            </h3>
-            <p class="text-sm text-gray-600 mb-4">
-              Já fez uma denúncia? Consulte o status usando seu token.
-            </p>
-            <NuxtLink 
-              to="/status" 
-              class="w-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors py-2 px-4 rounded-lg text-sm font-medium text-center block"
-            >
-              Consultar Status
-            </NuxtLink>
-          </div>
+        <!-- Mensagem de Erro -->
+        <div v-if="errorMsg" class="text-sm text-red-600">
+          {{ errorMsg }}
         </div>
-      </div>
+        
+        <!-- Botão de Submit -->
+        <button 
+          type="submit" 
+          :disabled="pending"
+          class="w-full px-4 py-2 font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50"
+        >
+          {{ pending ? 'Aguarde...' : 'Entrar' }}
+        </button>
+      </form>
     </div>
   </div>
 </template>
 
-<script setup>
-// Meta tags para SEO
-useSeoMeta({
-  title: 'Sistema de Denúncias Anônimas',
-  description: 'Denuncie de forma 100% anônima e segura. Criptografia ponta a ponta garantida.'
-})
+
+<script setup lang="ts">
+definePageMeta({ layout: 'login' })
+
+const { api } = useApi()
+const { setTokens } = useAuth()
+const router = useRouter()
+
+const email = ref('')
+const password = ref('')
+const errorMsg = ref<string | null>(null)
+const pending = ref(false)
+
+async function handleLogin() {
+  pending.value = true
+  errorMsg.value = null
+
+  try {
+    const data = await api<{ access: string; refresh: string }>('/token/', {
+      method: 'POST',
+      body: { email: email.value, password: password.value },
+    })
+
+    setTokens(data.access, data.refresh)
+    await router.push('/dashboard')
+  } catch (error: any) {
+    errorMsg.value = 'Email ou senha inválidos.'
+  } finally {
+    pending.value = false
+  }
+}
 </script>

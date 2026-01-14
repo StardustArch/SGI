@@ -5,6 +5,8 @@ from . import views
 urlpatterns = [
     # Mapeia o URL 'me/' para a nossa ManageUserView
     path('users/me/', views.ManageUserView.as_view(), name='manage-user'),
+    # ---- ADICIONE ESTA NOVA ROTA ----
+    path('users/change-password/', views.ChangePasswordView.as_view(), name='change-password'),
     path('users/admin/registar/', views.RegistoCompletoView.as_view(), name='admin-registar'),
     # ---- ADICIONE ESTA NOVA LINHA AQUI ----
     # GET: Lista todos os estudantes (para pesquisa)
@@ -44,15 +46,39 @@ urlpatterns = [
         views.PresencaBatchCreateView.as_view(), 
         name='presenca-batch'
     ),
+      # ---- ADICIONE ESTA NOVA ROTA ----
+    # GET/PATCH: Detalhes de UM estudante
+    path(
+        'estudantes/<int:pk>/',
+        views.EstudanteDetailView.as_view(),
+        name='detalhe-estudante'
+    ),
+
+# ---- ADICIONE ESTA NOVA ROTA ----
+    # GET: (Estudante) Vê os seus detalhes de perfil
+    path('perfil/detalhes/', views.PerfilEstudanteDetailView.as_view(), name='perfil-detalhes'),
     # GET: Lista as minhas mensalidades
     path('perfil/mensalidades/', views.PerfilMensalidadeListView.as_view(), name='perfil-mensalidades'),
     
+    # ---- ADICIONE ESTA NOVA ROTA ----
+    # GET/PATCH/DELETE: Detalhes de UMA sanção
+    path(
+        'sancoes/<int:pk>/',
+        views.SancaoDetailView.as_view(),
+        name='detalhe-sancao'
+    ),
     # GET: Lista as minhas sanções
     path('perfil/sancoes/', views.PerfilSancaoListView.as_view(), name='perfil-sancoes'),
     
     # GET: Lista as minhas presenças
     path('perfil/presencas/', views.PerfilPresencaListView.as_view(), name='perfil-presencas'),
 
+    # GET/PATCH/DELETE: Detalhes de UM registo de presença
+    path(
+        'presencas/<int:pk>/',
+        views.PresencaEstudoDetailView.as_view(),
+        name='detalhe-presenca'
+    ),
     # GET: Lista os meus pedidos de saída
     # POST: Cria um novo pedido de saída (UC-04 Parte A)
     path('perfil/pedidos-saida/', views.PedidoSaidaListCreateView.as_view(), name='perfil-pedidos-saida'),
@@ -72,7 +98,17 @@ urlpatterns = [
     
     # GET: Lista o histórico disciplinar dos meus educandos
     path('perfil-encarregado/sancoes/', views.EncarregadoSancaoListView.as_view(), name='encarregado-sancoes'),
-    
+    # ---- ADICIONE ESTA NOVA ROTA ----
+    # GET: Lista o histórico de presenças dos meus educandos
+    path('perfil-encarregado/presencas/', views.EncarregadoPresencaListView.as_view(), name='encarregado-presencas'),
+       # ---- ADICIONE ESTA NOVA ROTA ----
+    # GET: Lista histórico de presenças do estudante
+    path(
+        'estudantes/<int:estudante_pk>/presencas/',
+        views.EstudantePresencaListView.as_view(),
+        name='lista-presencas-estudante'
+    ),
+
     # GET: Lista os pedidos de saída dos meus educandos
     path('perfil-encarregado/pedidos-saida/', views.EncarregadoPedidoSaidaListView.as_view(), name='encarregado-pedidos-saida'),
     path('relatorios/financeiro/', views.FinanceiroSummaryView.as_view(), name='relatorio-financeiro'),

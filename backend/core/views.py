@@ -5,7 +5,7 @@ from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Utilizador, Perfil, Encarregado, Estudante, Mensalidade, Sancao, PresencaEstudo, PedidoSaida
-from .serializers import UserSerializer, RegistoCompletoSerializer, MensalidadeSerializer, MensalidadeUpdateSerializer, SancaoSerializer, PresencaBatchSerializer, EstudanteListSerializer, PresencaEstudoSerializer, PedidoSaidaSerializer, PedidoSaidaListAdminSerializer, PedidoSaidaUpdateAdminSerializer, FinanceiroSummarySerializer,TopInfratoresSerializer, TopAusentesSerializer, TipoSancaoSummarySerializer, PedidoSaidaSummarySerializer
+from .serializers import UserSerializer, RegistoCompletoSerializer, MensalidadeSerializer, MensalidadeUpdateSerializer, SancaoSerializer, PresencaBatchSerializer, EstudanteListSerializer, PresencaEstudoSerializer, PedidoSaidaSerializer, PedidoSaidaListAdminSerializer, PedidoSaidaUpdateAdminSerializer, FinanceiroSummarySerializer,TopInfratoresSerializer, TopAusentesSerializer, TipoSancaoSummarySerializer, PedidoSaidaSummarySerializer, EstudanteDetailSerializer, SancaoUpdateSerializer,PresencaEstudoUpdateSerializer, EstudantePerfilSerializer, ChangePasswordSerializer
 from .permissions import IsAdminUser, IsEstudanteUser, IsOwnerOfPedidoSaida, IsEncarregadoUser
 from django.contrib.auth import get_user_model  # <-- ADICIONE ESTA LINHA
 from django.db import transaction  # <-- ADICIONE ESTA LINHA
@@ -834,3 +834,130 @@ class OpcoesView(APIView):
         }
         
         return Response(opcoes, status=status.HTTP_200_OK)
+
+
+# --- ADICIONE ESTAS DUAS NOVAS VIEWS ---
+
+class EstudanteDetailView(generics.RetrieveUpdateAPIView):
+    """
+    Endpoint para Admin:
+    GET: Ver os detalhes de UM estudante.
+    PATCH: Atualizar os dados de UM estudante (nome, quarto, curso, estado).
+    """
+    queryset = Estudante.objects.all()
+    serializer_class = EstudanteDetailSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    lookup_field = 'pk' # A PK do Estudante é o 'utilizador_id'
+
+class EstudantePresencaListView(generics.ListAPIView):
+    """
+    Endpoint para Admin:
+    GET: Listar o histórico de presenças de UM estudante.
+    """
+    serializer_class = PresencaEstudoSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get_queryset(self):
+        """ Filtra presenças pelo estudante_pk da URL """
+        # Usamos 'estudante_pk' para evitar conflito com 'pk' de outras rotas
+        estudante_pk = self.kwargs['estudante_pk']
+        return PresencaEstudo.objects.filter(estudante_id=estudante_pk).order_by('-data_presenca')
+
+class SancaoDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Endpoint para Admin:
+    GET: Ver uma sanção específica.
+    PATCH: Atualizar uma sanção específica.
+    DELETE: Apagar uma sanção específica.
+    """
+    queryset = Sancao.objects.all()
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    # Usar serializers diferentes para GET vs PATCH
+    def get_serializer_class(self):
+        if self.request.method == 'PATCH':
+            return SancaoUpdateSerializer
+        return SancaoSerializer
+
+class PresencaEstudoDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Endpoint para Admin:
+    GET: Ver um registo de presença específico.
+    PATCH: Corrigir (atualizar) um registo.
+    DELETE: Apagar um registo.
+    """
+    queryset = PresencaEstudo.objects.all()
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    # Usar serializers diferentes para GET vs PATCH
+    def get_serializer_class(self):
+        if self.request.method == 'PATCH':
+            return PresencaEstudoUpdateSerializer
+        return PresencaEstudoSerializer
+
+# 3. ADICIONE ESTA NOVA VIEW (junto com as outras do Perfil de Estudante)
+
+class PerfilEstudanteDetailView(generics.RetrieveAPIView):
+    """
+    Endpoint para o Estudante (logado) ver
+    os seus próprios dados de perfil (quarto, curso, encarregado).
+    """
+    serializer_class = EstudantePerfilSerializer
+    permission_classes = [IsAuthenticated, IsEstudanteUser] # Protegido!
+
+    def get_object(self):
+        """ Retorna o objecto Estudante associado ao utilizador logado """
+        # request.user.id é a PK do Estudante (graças ao OneToOneField)
+        return get_object_or_404(Estudante, pk=self.request.user.id)
+
+# Ficheiro: backend/core/views.py
+# ... (Manter a view ManageUserView) ...
+
+# --- ADICIONE ESTA NOVA VIEW ---
+
+class ChangePasswordView(generics.UpdateAPIView):
+    """
+    Endpoint para um utilizador (logado) mudar a sua própria senha.
+    Funciona para qualquer perfil (Admin, Estudante, Encarregado).
+    """
+    serializer_class = ChangePasswordSerializer
+    permission_classes = [IsAuthenticated] # Só precisa de estar logado
+
+    def get_object(self):
+        # O objecto a ser atualizado é o próprio utilizador logado
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        """
+        Lógica customizada para o PATCH (Update).
+        """
+        user = self.get_object()
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        
+        # O .save() no serializer é que faz a mudança da senha
+        serializer.save() 
+        
+        return Response({"status": "senha alterada com sucesso"}, status=status.HTTP_200_OK)
+
+
+class EncarregadoPresencaListView(generics.ListAPIView):
+    """
+    Endpoint para o Encarregado (logado) ver
+    o histórico de presenças (estudos) dos seus educandos.
+    """
+    serializer_class = PresencaEstudoSerializer # Reutiliza o serializer
+    permission_classes = [IsAuthenticated, IsEncarregadoUser]
+
+    def get_queryset(self):
+        """
+        Retorna as presenças apenas dos estudantes
+        associados ao encarregado logado.
+        """
+        # 1. Encontra os IDs dos estudantes deste encarregado
+        estudante_ids = Estudante.objects.filter(
+            encarregado=self.request.user.encarregado
+        ).values_list('pk', flat=True)
+        
+        # 2. Retorna as presenças que pertencem a esses IDs
+        return PresencaEstudo.objects.filter(estudante_id__in=estudante_ids).order_by('-data_presenca')
