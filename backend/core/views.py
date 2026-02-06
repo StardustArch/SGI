@@ -5,7 +5,7 @@ from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Utilizador, Perfil, Encarregado, Estudante, Mensalidade, Sancao, PresencaEstudo, PedidoSaida
-from .serializers import UserSerializer, RegistoCompletoSerializer, MensalidadeSerializer, MensalidadeUpdateSerializer, SancaoSerializer, PresencaBatchSerializer, EstudanteListSerializer, PresencaEstudoSerializer, PedidoSaidaSerializer, PedidoSaidaListAdminSerializer, PedidoSaidaUpdateAdminSerializer, FinanceiroSummarySerializer,TopInfratoresSerializer, TopAusentesSerializer, TipoSancaoSummarySerializer, PedidoSaidaSummarySerializer, EstudanteDetailSerializer, SancaoUpdateSerializer,PresencaEstudoUpdateSerializer, EstudantePerfilSerializer, ChangePasswordSerializer
+from .serializers import UserSerializer, RegistoCompletoSerializer, MensalidadeSerializer, MensalidadeUpdateSerializer, SancaoSerializer, PresencaBatchSerializer, EstudanteListSerializer, PresencaEstudoSerializer, PedidoSaidaSerializer, PedidoSaidaListAdminSerializer, PedidoSaidaUpdateAdminSerializer, FinanceiroSummarySerializer,TopInfratoresSerializer, TopAusentesSerializer, TipoSancaoSummarySerializer, PedidoSaidaSummarySerializer, EstudanteDetailSerializer, SancaoUpdateSerializer,PresencaEstudoUpdateSerializer, EstudantePerfilSerializer, ChangePasswordSerializer, PedidoSaidaEncarregadoUpdateSerializer, EncarregadoProfileUpdateSerializer, PasswordResetRequestSerializer, SetNewPasswordSerializer
 from .permissions import IsAdminUser, IsEstudanteUser, IsOwnerOfPedidoSaida, IsEncarregadoUser
 from django.contrib.auth import get_user_model  # <-- ADICIONE ESTA LINHA
 from django.db import transaction  # <-- ADICIONE ESTA LINHA
@@ -13,6 +13,20 @@ from django.shortcuts import get_object_or_404 # <-- ADICIONE ESTA
 from rest_framework.views import APIView # <-- ADICIONE ESTA
 from django.db.models import Sum, Count, Q # <-- ADICIONE ESTA
 from django.utils import timezone
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
+from django.utils import timezone # Não esquecer de importar
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+
+
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 
 class ManageUserView(generics.RetrieveAPIView):
     """
@@ -549,6 +563,11 @@ class EncarregadoMensalidadeListView(generics.ListAPIView):
     """
     serializer_class = MensalidadeSerializer
     permission_classes = [IsAuthenticated, IsEncarregadoUser]
+    pagination_class = StandardResultsSetPagination
+    
+    # Ativar filtros automáticos
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['estudante', 'estado', 'mes_referencia']
 
     def get_queryset(self):
         """ Retorna mensalidades apenas dos estudantes do encarregado logado """
@@ -560,37 +579,144 @@ class EncarregadoMensalidadeListView(generics.ListAPIView):
         # 2. Retorna as mensalidades que pertencem a esses IDs
         return Mensalidade.objects.filter(estudante_id__in=estudante_ids).order_by('-mes_referencia')
 
+# Adiciona isto no views.py
+
+class EncarregadoEducandoDetailView(generics.RetrieveAPIView):
+    """
+    Endpoint para ver os dados detalhados (Nome, Curso, Quarto)
+    de um estudante específico, MAS APENAS se for educando do user logado.
+    """
+    serializer_class = EstudanteListSerializer # Ou EstudanteDetailSerializer se tiveres um mais completo
+    permission_classes = [IsAuthenticated, IsEncarregadoUser]
+
+    def get_queryset(self):
+        # Filtra para garantir que o ID solicitado pertence à lista de filhos do user
+        return Estudante.objects.filter(encarregado=self.request.user.encarregado)
+
+
+class EncarregadoFinanceiroStatsView(APIView):
+    """
+    Retorna o somatório do que já foi pago e do que está em dívida.
+    """
+    permission_classes = [IsAuthenticated, IsEncarregadoUser]
+
+    def get(self, request):
+        # Pegar todos os estudantes do encarregado
+        estudantes = Estudante.objects.filter(encarregado=request.user.encarregado)
+        
+        # Pegar todas as mensalidades desses estudantes
+        mensalidades = Mensalidade.objects.filter(estudante__in=estudantes)
+
+        # Calcular Totais
+        total_pago = mensalidades.filter(estado='Pago').aggregate(Sum('valor_pago'))['valor_pago__sum'] or 0
+        total_pendente = mensalidades.filter(estado='Pendente').count()
+        total_atraso = mensalidades.filter(estado='Atraso').count()
+
+        return Response({
+            "total_pago": total_pago,
+            "faturas_pendentes": total_pendente,
+            "faturas_atraso": total_atraso,
+            "moeda": "MZN"
+        })
+
+
 class EncarregadoSancaoListView(generics.ListAPIView):
-    """
-    Endpoint para o Encarregado (logado) ver
-    o histórico disciplinar dos seus educandos.
-    """
     serializer_class = SancaoSerializer
     permission_classes = [IsAuthenticated, IsEncarregadoUser]
+    pagination_class = StandardResultsSetPagination # <--- Paginação Ativa
+    
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['estudante', 'tipo_sancao'] 
+    ordering = ['-data_ocorrencia'] # Padrão: Ocorrência mais recente no topo
 
     def get_queryset(self):
         estudante_ids = Estudante.objects.filter(
             encarregado=self.request.user.encarregado
         ).values_list('pk', flat=True)
-        return Sancao.objects.filter(estudante_id__in=estudante_ids).order_by('-data_ocorrencia')
+        return Sancao.objects.filter(estudante_id__in=estudante_ids)
 
 class EncarregadoPedidoSaidaListView(generics.ListAPIView):
+    serializer_class = PedidoSaidaListAdminSerializer # Usa o que tem o nome do aluno
+    permission_classes = [IsAuthenticated, IsEncarregadoUser]
+    pagination_class = StandardResultsSetPagination # <--- Paginação Ativa
+    
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['estudante', 'estado'] 
+    ordering = ['-data_submissao'] # Padrão: Pedido mais recente primeiro
+
+    def get_queryset(self):
+        estudante_ids = Estudante.objects.filter(
+            encarregado=self.request.user.encarregado
+        ).values_list('pk', flat=True)
+        return PedidoSaida.objects.filter(estudante_id__in=estudante_ids)
+
+
+class EncarregadoPresencaListView(generics.ListAPIView):
+    serializer_class = PresencaEstudoSerializer
+    permission_classes = [IsAuthenticated, IsEncarregadoUser]
+    pagination_class = StandardResultsSetPagination # <--- Paginação Ativa
+    
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['estudante', 'estado', 'data_presenca'] 
+    ordering = ['-data_presenca'] # Padrão: Hoje primeiro
+
+    def get_queryset(self):
+        estudante_ids = Estudante.objects.filter(
+            encarregado=self.request.user.encarregado
+        ).values_list('pk', flat=True)
+        return PresencaEstudo.objects.filter(estudante_id__in=estudante_ids)
+
+
+class EncarregadoPedidoSaidaDetailView(generics.UpdateAPIView):
     """
-    Endpoint para o Encarregado (logado) ver
-    os pedidos de saída dos seus educandos.
+    Endpoint para o Encarregado (logado) FINALIZAR um pedido de saída.
+    PATCH: Mudar estado de 'Aguardando_Encarregado' para 'Autorizado' ou 'Rejeitado'.
     """
-    serializer_class = PedidoSaidaListAdminSerializer # Reutiliza o serializer do admin
+    serializer_class = PedidoSaidaEncarregadoUpdateSerializer
     permission_classes = [IsAuthenticated, IsEncarregadoUser]
 
     def get_queryset(self):
+        # Só pode editar pedidos dos seus próprios educandos
         estudante_ids = Estudante.objects.filter(
             encarregado=self.request.user.encarregado
         ).values_list('pk', flat=True)
-        return PedidoSaida.objects.filter(estudante_id__in=estudante_ids).order_by('-data_submissao')
+        return PedidoSaida.objects.filter(estudante_id__in=estudante_ids)
+
+    def perform_update(self, serializer):
+        # 1. Verificar o estado atual antes de salvar
+        pedido = self.get_object()
+        
+        # O Encarregado só pode mexer se o Admin já tiver aprovado
+        if pedido.estado != 'Aguardando_Encarregado':
+             raise serializers.ValidationError(
+                 {"erro": "Não pode alterar este pedido. Ele ainda não foi aprovado pelo Admin ou já foi finalizado."}
+             )
+
+        # 2. Salvar o novo estado e a data
+        serializer.save(data_aprovacao_encarregado=timezone.now())
 
 
-# Ficheiro: backend/core/views.py
-# ... (Manter as views de PedidoSaida) ...
+# --- 1. ATUALIZAR PERFIL DO ENCARREGADO ---
+class EncarregadoProfileView(generics.RetrieveUpdateAPIView):
+    """
+    GET: Vê os seus próprios dados (Telefone, Email).
+    PATCH: Atualiza os seus contactos.
+    """
+    serializer_class = EncarregadoProfileUpdateSerializer
+    permission_classes = [IsAuthenticated, IsEncarregadoUser]
+
+    def get_object(self):
+        # Retorna o objecto Encarregado ligado ao User
+        return self.request.user.encarregado
+
+
+
+
+
+
+
+
+
 
 # -----------------------------------------------------------------
 # --- ENDPOINTS DE RELATÓRIOS (DASHBOARD) ---
@@ -941,23 +1067,66 @@ class ChangePasswordView(generics.UpdateAPIView):
         return Response({"status": "senha alterada com sucesso"}, status=status.HTTP_200_OK)
 
 
-class EncarregadoPresencaListView(generics.ListAPIView):
-    """
-    Endpoint para o Encarregado (logado) ver
-    o histórico de presenças (estudos) dos seus educandos.
-    """
-    serializer_class = PresencaEstudoSerializer # Reutiliza o serializer
-    permission_classes = [IsAuthenticated, IsEncarregadoUser]
 
-    def get_queryset(self):
-        """
-        Retorna as presenças apenas dos estudantes
-        associados ao encarregado logado.
-        """
-        # 1. Encontra os IDs dos estudantes deste encarregado
-        estudante_ids = Estudante.objects.filter(
-            encarregado=self.request.user.encarregado
-        ).values_list('pk', flat=True)
+
+
+
+
+class PasswordResetRequestView(APIView):
+    """
+    Passo 1: Recebe o email e envia o link de recuperação.
+    """
+    permission_classes = [] # Qualquer um pode pedir (público)
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         
-        # 2. Retorna as presenças que pertencem a esses IDs
-        return PresencaEstudo.objects.filter(estudante_id__in=estudante_ids).order_by('-data_presenca')
+        email = serializer.validated_data['email']
+        User = get_user_model()
+        user = User.objects.get(email=email)
+
+        # 1. Gerar Token e ID codificado
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = PasswordResetTokenGenerator().make_token(user)
+
+        # 2. Construir o Link para o Frontend (Nuxt)
+        # Ajuste o domínio conforme necessário (localhost:3000 em dev)
+        frontend_url = "http://localhost:3000/auth/reset-password"
+        reset_link = f"{frontend_url}?uid={uidb64}&token={token}"
+
+        # 3. Enviar Email
+        # Nota: Para testar localmente, o email vai aparecer na consola (terminal)
+        try:
+            send_mail(
+                subject="Recuperação de Senha - SGI",
+                message=f"Olá {user.first_name},\n\nUse o link abaixo para redefinir a sua senha:\n\n{reset_link}\n\nSe não pediu isto, ignore.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            return Response({"erro": "Erro ao enviar email."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({"status": "Email de recuperação enviado."}, status=status.HTTP_200_OK)
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    Passo 2: Recebe a nova senha e o token, e altera a senha.
+    """
+    permission_classes = [] # Público
+
+    def patch(self, request):
+        serializer = SetNewPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # O serializer já validou o token e encontrou o user
+        user = serializer.validated_data['user']
+        new_password = serializer.validated_data['password']
+
+        # Definir a nova senha
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"status": "Senha redefinida com sucesso."}, status=status.HTTP_200_OK)

@@ -180,12 +180,20 @@ class PedidoSaida(models.Model):
     """ Fluxo digital para pedidos de saída. """
     estudante = models.ForeignKey(Estudante, on_delete=models.CASCADE, related_name="pedidos_saida")
     admin_id_aprovacao = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="pedidos_aprovados")
-    
+
+
     data_submissao = models.DateTimeField(auto_now_add=True)
     data_saida_pretendida = models.DateField()
     data_retorno_pretendida = models.DateField()
+    data_aprovacao_encarregado = models.DateField()
     motivo = models.TextField()
     
-    ESTADO_CHOICES = [('Pendente', 'Pendente'), ('Aprovado_Admin', 'Aprovado (Admin)'), ('Rejeitado', 'Rejeitado')]
-    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='Pendente')
+    ESTADO_CHOICES = [
+        ('Pendente', 'Pendente (Admin)'), 
+        ('Aguardando_Encarregado', 'Aprovado Admin (Falta Encarregado)'), 
+        ('Autorizado', 'Autorizado (Final)'), 
+        ('Rejeitado', 'Rejeitado')
+    ]
+    estado = models.CharField(max_length=30, choices=ESTADO_CHOICES, default='Pendente')
+    data_aprovacao_encarregado = models.DateTimeField(null=True, blank=True)
     observacao_admin = models.TextField(null=True, blank=True)

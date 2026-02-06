@@ -8,6 +8,8 @@ urlpatterns = [
     # ---- ADICIONE ESTA NOVA ROTA ----
     path('users/change-password/', views.ChangePasswordView.as_view(), name='change-password'),
     path('users/admin/registar/', views.RegistoCompletoView.as_view(), name='admin-registar'),
+    path('auth/password-reset/', views.PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('auth/password-reset-confirm/', views.PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     # ---- ADICIONE ESTA NOVA LINHA AQUI ----
     # GET: Lista todos os estudantes (para pesquisa)
     path(
@@ -90,17 +92,48 @@ urlpatterns = [
     path('admin/pedidos-saida/<int:pk>/', views.AdminPedidoSaidaDetailView.as_view(), name='admin-detalhe-pedido'),
 
     path('perfil/pedidos-saida/<int:pk>/', views.PerfilPedidoSaidaDetailView.as_view(), name='perfil-detalhe-pedido'),
+
+
+
+
+
+
+
+
+
     # GET: Lista os meus educandos
     path('perfil-encarregado/meus-educandos/', views.EncarregadoEducandosListView.as_view(), name='encarregado-educandos'),
-    
+    path('perfil-encarregado/meus-educandos/<int:pk>/', views.EncarregadoEducandoDetailView.as_view(), name='encarregado-educando-detalhe'),
     # GET: Lista o histórico financeiro dos meus educandos
     path('perfil-encarregado/mensalidades/', views.EncarregadoMensalidadeListView.as_view(), name='encarregado-mensalidades'),
-    
+    path('perfil-encarregado/financas-resumo/', views.EncarregadoFinanceiroStatsView.as_view(), name='encarregado-financas-stats'),
     # GET: Lista o histórico disciplinar dos meus educandos
     path('perfil-encarregado/sancoes/', views.EncarregadoSancaoListView.as_view(), name='encarregado-sancoes'),
     # ---- ADICIONE ESTA NOVA ROTA ----
     # GET: Lista o histórico de presenças dos meus educandos
     path('perfil-encarregado/presencas/', views.EncarregadoPresencaListView.as_view(), name='encarregado-presencas'),
+
+    # ---- ADICIONAR ESTA NOVA ROTA ----
+    # PATCH: Encarregado aprova/rejeita um pedido específico
+    path(
+        'perfil-encarregado/pedidos-saida/<int:pk>/', 
+        views.EncarregadoPedidoSaidaDetailView.as_view(), 
+        name='encarregado-pedido-acao'
+    ),
+    path(
+        'perfil-encarregado/meus-dados/', 
+        views.EncarregadoProfileView.as_view(), 
+        name='encarregado-meus-dados'
+    ),
+    path('perfil-encarregado/pedidos-saida/', views.EncarregadoPedidoSaidaListView.as_view(), name='encarregado-pedidos-saida'),
+
+
+
+
+
+
+
+
        # ---- ADICIONE ESTA NOVA ROTA ----
     # GET: Lista histórico de presenças do estudante
     path(
@@ -110,7 +143,6 @@ urlpatterns = [
     ),
 
     # GET: Lista os pedidos de saída dos meus educandos
-    path('perfil-encarregado/pedidos-saida/', views.EncarregadoPedidoSaidaListView.as_view(), name='encarregado-pedidos-saida'),
     path('relatorios/financeiro/', views.FinanceiroSummaryView.as_view(), name='relatorio-financeiro'),
     path('relatorios/disciplina/top-10/', views.TopInfratoresView.as_view(), name='relatorio-top-infratores'),
     path('relatorios/assiduidade/top-ausentes/', views.TopAusentesView.as_view(), name='relatorio-top-ausentes'),
