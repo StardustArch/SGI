@@ -58,9 +58,7 @@ urlpatterns = [
 
 # ---- ADICIONE ESTA NOVA ROTA ----
     # GET: (Estudante) Vê os seus detalhes de perfil
-    path('perfil/detalhes/', views.PerfilEstudanteDetailView.as_view(), name='perfil-detalhes'),
     # GET: Lista as minhas mensalidades
-    path('perfil/mensalidades/', views.PerfilMensalidadeListView.as_view(), name='perfil-mensalidades'),
     
     # ---- ADICIONE ESTA NOVA ROTA ----
     # GET/PATCH/DELETE: Detalhes de UMA sanção
@@ -70,10 +68,8 @@ urlpatterns = [
         name='detalhe-sancao'
     ),
     # GET: Lista as minhas sanções
-    path('perfil/sancoes/', views.PerfilSancaoListView.as_view(), name='perfil-sancoes'),
     
     # GET: Lista as minhas presenças
-    path('perfil/presencas/', views.PerfilPresencaListView.as_view(), name='perfil-presencas'),
 
     # GET/PATCH/DELETE: Detalhes de UM registo de presença
     path(
@@ -83,7 +79,6 @@ urlpatterns = [
     ),
     # GET: Lista os meus pedidos de saída
     # POST: Cria um novo pedido de saída (UC-04 Parte A)
-    path('perfil/pedidos-saida/', views.PedidoSaidaListCreateView.as_view(), name='perfil-pedidos-saida'),
 
     # GET: (Admin) Lista todos os pedidos (filtra por ?estado=Pendente)
     path('admin/pedidos-saida/', views.AdminPedidoSaidaListView.as_view(), name='admin-lista-pedidos'),
@@ -94,37 +89,32 @@ urlpatterns = [
     path('perfil/pedidos-saida/<int:pk>/', views.PerfilPedidoSaidaDetailView.as_view(), name='perfil-detalhe-pedido'),
 
 
+# -----------------------------------------------------------------
+# --- PERFIL DE ESTUDANTE ---
+# -----------------------------------------------------------------
+
+    path('student/me/', views.PerfilEstudanteDetailView.as_view(), name='student-profile'),
+    path('student/exits/', views.PedidoSaidaListCreateView.as_view(), name='student-exits'),
+    path('student/financial/', views.PerfilMensalidadeListView.as_view(), name='student-financial'),
+    path('student/discipline/', views.PerfilSancaoListView.as_view(), name='student-discipline'),
+    path('student/attendance/', views.PerfilPresencaListView.as_view(), name='student-attendance'),
 
 
 
 
 
+# -----------------------------------------------------------------
+# --- PERFIL DE ENCARREGADO ---
+# -----------------------------------------------------------------
 
-
-    # GET: Lista os meus educandos
     path('perfil-encarregado/meus-educandos/', views.EncarregadoEducandosListView.as_view(), name='encarregado-educandos'),
     path('perfil-encarregado/meus-educandos/<int:pk>/', views.EncarregadoEducandoDetailView.as_view(), name='encarregado-educando-detalhe'),
-    # GET: Lista o histórico financeiro dos meus educandos
     path('perfil-encarregado/mensalidades/', views.EncarregadoMensalidadeListView.as_view(), name='encarregado-mensalidades'),
     path('perfil-encarregado/financas-resumo/', views.EncarregadoFinanceiroStatsView.as_view(), name='encarregado-financas-stats'),
-    # GET: Lista o histórico disciplinar dos meus educandos
     path('perfil-encarregado/sancoes/', views.EncarregadoSancaoListView.as_view(), name='encarregado-sancoes'),
-    # ---- ADICIONE ESTA NOVA ROTA ----
-    # GET: Lista o histórico de presenças dos meus educandos
     path('perfil-encarregado/presencas/', views.EncarregadoPresencaListView.as_view(), name='encarregado-presencas'),
-
-    # ---- ADICIONAR ESTA NOVA ROTA ----
-    # PATCH: Encarregado aprova/rejeita um pedido específico
-    path(
-        'perfil-encarregado/pedidos-saida/<int:pk>/', 
-        views.EncarregadoPedidoSaidaDetailView.as_view(), 
-        name='encarregado-pedido-acao'
-    ),
-    path(
-        'perfil-encarregado/meus-dados/', 
-        views.EncarregadoProfileView.as_view(), 
-        name='encarregado-meus-dados'
-    ),
+    path('perfil-encarregado/pedidos-saida/<int:pk>/', views.EncarregadoPedidoSaidaDetailView.as_view(), name='encarregado-pedido-acao'),
+    path('perfil-encarregado/meus-dados/', views.EncarregadoProfileView.as_view(), name='encarregado-meus-dados'),
     path('perfil-encarregado/pedidos-saida/', views.EncarregadoPedidoSaidaListView.as_view(), name='encarregado-pedidos-saida'),
 
 

@@ -380,82 +380,6 @@ class EstudanteListView(generics.ListAPIView):
 # Ficheiro: backend/core/views.py
 # ... (Manter a view EstudanteListView) ...
 
-# -----------------------------------------------------------------
-# --- ENDPOINTS DO PERFIL DE ESTUDANTE (CONSULTA) ---
-# -----------------------------------------------------------------
-
-class PerfilMensalidadeListView(generics.ListAPIView):
-    """
-    Endpoint para o Estudante (logado) ver
-    o seu próprio histórico financeiro.
-    """
-    serializer_class = MensalidadeSerializer
-    permission_classes = [IsAuthenticated, IsEstudanteUser] # <-- Protegido!
-
-    def get_queryset(self):
-        """ Retorna apenas mensalidades do utilizador logado """
-        # self.request.user.id é o ID do Utilizador (ligado ao token)
-        # que também é o PK do Estudante (graças ao OneToOneField)
-        return Mensalidade.objects.filter(estudante_id=self.request.user.id).order_by('-mes_referencia')
-
-class PerfilSancaoListView(generics.ListAPIView):
-    """
-    Endpoint para o Estudante (logado) ver
-    o seu próprio histórico disciplinar.
-    """
-    serializer_class = SancaoSerializer
-    permission_classes = [IsAuthenticated, IsEstudanteUser] # <-- Protegido!
-
-    def get_queryset(self):
-        """ Retorna apenas sanções do utilizador logado """
-        return Sancao.objects.filter(estudante_id=self.request.user.id).order_by('-data_ocorrencia')
-
-class PerfilPresencaListView(generics.ListAPIView):
-    """
-    Endpoint para o Estudante (logado) ver
-    o seu próprio histórico de presenças.
-    """
-    # Vamos criar um serializer simples para isto
-    # (Não precisamos do serializer 'batch' aqui)
-    serializer_class = PresencaEstudoSerializer # <-- Vamos criar este
-    permission_classes = [IsAuthenticated, IsEstudanteUser] # <-- Protegido!
-
-    def get_queryset(self):
-        """ Retorna apenas presenças do utilizador logado """
-        return PresencaEstudo.objects.filter(estudante_id=self.request.user.id).order_by('-data_presenca')
-
-
-# Ficheiro: backend/core/views.py
-# ... (Manter a view PerfilPresencaListView) ...
-
-# --- ADICIONE ESTA NOVA VIEW ---
-
-class PedidoSaidaListCreateView(generics.ListCreateAPIView):
-    """
-    Endpoint para o Estudante (logado):
-    GET: Listar os seus pedidos de saída.
-    POST: Criar um novo pedido de saída.
-    """
-    serializer_class = PedidoSaidaSerializer
-    permission_classes = [IsAuthenticated, IsEstudanteUser] # Protegido!
-
-    def get_queryset(self):
-        """ Retorna apenas os pedidos de saída do utilizador logado """
-        # O ID do request.user é a PK do Estudante
-        return PedidoSaida.objects.filter(estudante_id=self.request.user.id).order_by('-data_submissao')
-
-    def perform_create(self, serializer):
-        """
-        Ao criar (POST), associa automaticamente o estudante (do token).
-        O 'estado' (Pendente) é definido por defeito no modelo.
-        """
-        # Garante que o estudante (baseado no token) existe
-        estudante_instance = get_object_or_404(Estudante, pk=self.request.user.id)
-        serializer.save(estudante=estudante_instance)
-
-
-# Ficheiro: backend/core/views.py
-# ... (Manter a view PedidoSaidaListCreateView do estudante) ...
 
 # -----------------------------------------------------------------
 # --- ENDPOINTS DO ADMIN (UC-04 Parte B) ---
@@ -1021,20 +945,7 @@ class PresencaEstudoDetailView(generics.RetrieveUpdateDestroyAPIView):
             return PresencaEstudoUpdateSerializer
         return PresencaEstudoSerializer
 
-# 3. ADICIONE ESTA NOVA VIEW (junto com as outras do Perfil de Estudante)
 
-class PerfilEstudanteDetailView(generics.RetrieveAPIView):
-    """
-    Endpoint para o Estudante (logado) ver
-    os seus próprios dados de perfil (quarto, curso, encarregado).
-    """
-    serializer_class = EstudantePerfilSerializer
-    permission_classes = [IsAuthenticated, IsEstudanteUser] # Protegido!
-
-    def get_object(self):
-        """ Retorna o objecto Estudante associado ao utilizador logado """
-        # request.user.id é a PK do Estudante (graças ao OneToOneField)
-        return get_object_or_404(Estudante, pk=self.request.user.id)
 
 # Ficheiro: backend/core/views.py
 # ... (Manter a view ManageUserView) ...
@@ -1130,3 +1041,51 @@ class PasswordResetConfirmView(APIView):
         user.save()
 
         return Response({"status": "Senha redefinida com sucesso."}, status=status.HTTP_200_OK)
+
+
+
+# -----------------------------------------------------------------
+# --- PERFIL DE ESTUDANTE ---
+# -----------------------------------------------------------------
+
+class PerfilEstudanteDetailView(generics.RetrieveAPIView):
+    """ Ver o próprio perfil """
+    serializer_class = EstudantePerfilSerializer
+    permission_classes = [IsAuthenticated, IsEstudanteUser]
+    def get_object(self):
+        return get_object_or_404(Estudante, pk=self.request.user.id)
+
+class PedidoSaidaListCreateView(generics.ListCreateAPIView):
+    """ Listar e Criar Pedidos de Saída """
+    serializer_class = PedidoSaidaSerializer
+    permission_classes = [IsAuthenticated, IsEstudanteUser]
+
+    def get_queryset(self):
+        # Só vê os seus pedidos
+        return PedidoSaida.objects.filter(estudante_id=self.request.user.id).order_by('-data_submissao')
+
+    def perform_create(self, serializer):
+        # Auto-associa o estudante logado
+        estudante = get_object_or_404(Estudante, pk=self.request.user.id)
+        serializer.save(estudante=estudante)
+
+class PerfilMensalidadeListView(generics.ListAPIView):
+    """ Histórico Financeiro """
+    serializer_class = MensalidadeSerializer
+    permission_classes = [IsAuthenticated, IsEstudanteUser]
+    def get_queryset(self):
+        return Mensalidade.objects.filter(estudante_id=self.request.user.id).order_by('-mes_referencia')
+
+class PerfilSancaoListView(generics.ListAPIView):
+    """ Histórico Disciplinar """
+    serializer_class = SancaoSerializer
+    permission_classes = [IsAuthenticated, IsEstudanteUser]
+    def get_queryset(self):
+        return Sancao.objects.filter(estudante_id=self.request.user.id).order_by('-data_ocorrencia')
+
+class PerfilPresencaListView(generics.ListAPIView):
+    """ Histórico de Presenças """
+    serializer_class = PresencaEstudoSerializer
+    permission_classes = [IsAuthenticated, IsEstudanteUser]
+    def get_queryset(self):
+        return PresencaEstudo.objects.filter(estudante_id=self.request.user.id).order_by('-data_presenca')

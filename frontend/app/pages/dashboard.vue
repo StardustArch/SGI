@@ -49,25 +49,25 @@
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/dashboard/student/financas" class="nav-link">
+            <NuxtLink to="/dashboard/student/finance" class="nav-link">
               <BootstrapIcon name="cash-coin" class="nav-icon" />
               <span v-if="isSidebarOpen" class="nav-text">Hist. Financeiro</span>
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/dashboard/student/disciplina" class="nav-link">
+            <NuxtLink to="/dashboard/student/discipline" class="nav-link">
               <BootstrapIcon name="info-circle-fill" class="nav-icon" />
               <span v-if="isSidebarOpen" class="nav-text">Hist. Disciplinar</span>
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/dashboard/student/presencas" class="nav-link">
+            <NuxtLink to="/dashboard/student/attendance" class="nav-link">
               <BootstrapIcon name="calendar-check-fill" class="nav-icon" />
               <span v-if="isSidebarOpen" class="nav-text">Hist. Presenças</span>
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/dashboard/student/pedidos" class="nav-link">
+            <NuxtLink to="/dashboard/student/exits" class="nav-link">
               <BootstrapIcon name="arrow-up-circle-fill" class="nav-icon" />
               <span v-if="isSidebarOpen" class="nav-text">Pedidos de Saída</span>
             </NuxtLink>
@@ -179,25 +179,25 @@
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/dashboard/student/financas" class="nav-link">
+            <NuxtLink to="/dashboard/student/finance" class="nav-link">
               <BootstrapIcon name="cash-coin" class="nav-icon" />
               <span class="nav-text">Hist. Financeiro</span>
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/dashboard/student/disciplina" class="nav-link">
+            <NuxtLink to="/dashboard/student/discipline" class="nav-link">
               <BootstrapIcon name="info-circle-fill" class="nav-icon" />
               <span class="nav-text">Hist. Disciplinar</span>
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/dashboard/student/presencas" class="nav-link">
+            <NuxtLink to="/dashboard/student/attendance" class="nav-link">
               <BootstrapIcon name="calendar-check-fill" class="nav-icon" />
               <span class="nav-text">Hist. Presenças</span>
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/dashboard/student/pedidos" class="nav-link">
+            <NuxtLink to="/dashboard/student/exits" class="nav-link">
               <BootstrapIcon name="arrow-up-circle-fill" class="nav-icon" />
               <span class="nav-text">Pedidos de Saída</span>
             </NuxtLink>
