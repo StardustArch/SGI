@@ -34,7 +34,7 @@
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/dashboard/admin/estudantes" class="nav-link">
+            <NuxtLink to="/dashboard/admin/students" class="nav-link">
               <BootstrapIcon name="people-fill" class="nav-icon" />
               <span v-if="isSidebarOpen" class="nav-text">Gerir Estudantes</span>
             </NuxtLink>

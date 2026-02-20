@@ -81,14 +81,20 @@ urlpatterns = [
     # POST: Cria um novo pedido de saída (UC-04 Parte A)
 
     # GET: (Admin) Lista todos os pedidos (filtra por ?estado=Pendente)
-    path('admin/pedidos-saida/', views.AdminPedidoSaidaListView.as_view(), name='admin-lista-pedidos'),
 
     # PATCH: (Admin) Aprova/Rejeita um pedido específico
-    path('admin/pedidos-saida/<int:pk>/', views.AdminPedidoSaidaDetailView.as_view(), name='admin-detalhe-pedido'),
 
     path('perfil/pedidos-saida/<int:pk>/', views.PerfilPedidoSaidaDetailView.as_view(), name='perfil-detalhe-pedido'),
 
+    path('admin/financeiro/gerar-lote/', views.GerarMensalidadesLoteView.as_view(), name='admin-gerar-mensalidades'),
 
+    path('admin/presencas/batch/', views.PresencaBatchCreateView.as_view(), name='admin-presenca-batch'),
+    path('admin/pedidos-saida/', views.AdminPedidoSaidaListView.as_view(), name='admin-pedidos-list'),
+    path('admin/pedidos-saida/<int:pk>/', views.AdminPedidoSaidaDetailView.as_view(), name='admin-pedido-detail'),
+    # Listagem e Pesquisa
+path('admin/estudantes/', views.EstudanteListView.as_view(), name='admin-student-list'),
+# Detalhes e Edição
+path('admin/estudantes/<int:pk>/', views.EstudanteDetailView.as_view(), name='admin-student-detail'),
 # -----------------------------------------------------------------
 # --- PERFIL DE ESTUDANTE ---
 # -----------------------------------------------------------------

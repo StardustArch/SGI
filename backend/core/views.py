@@ -438,28 +438,93 @@ class AdminPedidoSaidaDetailView(generics.UpdateAPIView):
         #    com a lista correcta de 'update_fields'.
         pedido.save(update_fields=updated_fields)
 
-
-# Ficheiro: backend/core/views.py
-# ... (Manter a view AdminPedidoSaidaDetailView) ...
-
-# -----------------------------------------------------------------
-# --- ENDPOINTS DO PERFIL DE ESTUDANTE (DETALHE) ---
-# -----------------------------------------------------------------
-
-class PerfilPedidoSaidaDetailView(generics.RetrieveAPIView):
+class GerarMensalidadesLoteView(APIView):
     """
-    Endpoint para o Estudante (logado) ver UM pedido de saída
-    específico (ex: para ver a resposta do admin).
+    Cria registos de mensalidade 'Pendente' para TODOS os estudantes 
+    ativos para o mês selecionado.
     """
-    queryset = PedidoSaida.objects.all()
-    serializer_class = PedidoSaidaSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request):
+        mes_ref_str = request.data.get('mes_referencia') # Espera "YYYY-MM-01"
+        
+        if not mes_ref_str:
+            return Response({"erro": "O mês de referência é obrigatório."}, status=400)
+
+        try:
+            # Garante que a data está no primeiro dia do mês para consistência
+            data_ref = timezone.datetime.strptime(mes_ref_str, '%Y-%m-%d').date().replace(day=1)
+        except ValueError:
+            return Response({"erro": "Formato de data inválido. Use AAAA-MM-DD."}, status=400)
+
+        estudantes_ativos = Estudante.objects.filter(estado='Activo')
+        total_estudantes = estudantes_ativos.count()
+        criados = 0
+        pularam = 0
+
+        # Usamos transação atómica: ou cria todos ou nenhum, para evitar dados parciais em caso de erro
+        with transaction.atomic():
+            for estudante in estudantes_ativos:
+                # get_or_create evita duplicados se o admin carregar no botão duas vezes sem querer
+                _, created = Mensalidade.objects.get_or_create(
+                    estudante=estudante,
+                    mes_referencia=data_ref,
+                    defaults={
+                        'estado': 'Pendente',
+                        'valor_pago': 0.0, # Começa a zero, Admin preenche ao confirmar
+                        'admin_id_registo': request.user
+                    }
+                )
+                if created:
+                    criados += 1
+                else:
+                    pularam += 1
+
+        return Response({
+            "mensagem": f"Processamento concluído para {data_ref.strftime('%B %Y')}",
+            "estudantes_processados": total_estudantes,
+            "novas_mensalidades": criados,
+            "registos_existentes_ignorados": pularam
+        }, status=status.HTTP_201_CREATED)
+
+class PortariaConfirmarMovimentoView(APIView):
+    """
+    Marca a hora exata que o aluno SAIU ou REGRESSOU.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def patch(self, request, pk):
+        pedido = get_object_or_404(PedidoSaida, pk=pk)
+        acao = request.data.get('acao') # 'saida' ou 'regresso'
+
+        if acao == 'saida':
+            if pedido.estado != 'Autorizado':
+                return Response({"erro": "Saída não autorizada pelo encarregado."}, status=400)
+            pedido.data_saida_real = timezone.now()
+            # Podes criar um novo estado: 'EM_CURSO'
+            # pedido.estado = 'Em_Viagem' 
+        
+        elif acao == 'regresso':
+            pedido.data_regresso_real = timezone.now()
+            # pedido.estado = 'Concluido'
+
+        pedido.save()
+        return Response({"status": "Movimento registado com sucesso."})
+
+# Exemplo de lógica para o Top 5 Infratores
+class TopInfratoresView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
     
-    # Protecção Dupla:
-    # 1. Tem de ser um Estudante para sequer tentar.
-    # 2. Tem de ser o DONO do objecto que está a pedir.
-    permission_classes = [IsAuthenticated, IsEstudanteUser, IsOwnerOfPedidoSaida]
-
-
+    def get(self, request):
+        hoje = timezone.now().date()
+        # Estudantes com mais sanções nos últimos 30 dias
+        dados = Sancao.objects.filter(
+            data_ocorrencia__gte=hoje - timezone.timedelta(days=30)
+        ).values('estudante__nome_completo').annotate(
+            total=Count('id')
+        ).order_by('-total')[:5]
+        
+        return Response(dados)
 # Ficheiro: backend/core/views.py
 # ... (Manter as views do Estudante) ...
 
@@ -1082,6 +1147,19 @@ class PerfilSancaoListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsEstudanteUser]
     def get_queryset(self):
         return Sancao.objects.filter(estudante_id=self.request.user.id).order_by('-data_ocorrencia')
+
+class PerfilPedidoSaidaDetailView(generics.RetrieveAPIView):
+    """
+    Endpoint para o Estudante (logado) ver UM pedido de saída
+    específico (ex: para ver a resposta do admin).
+    """
+    queryset = PedidoSaida.objects.all()
+    serializer_class = PedidoSaidaSerializer
+    
+    # Protecção Dupla:
+    # 1. Tem de ser um Estudante para sequer tentar.
+    # 2. Tem de ser o DONO do objecto que está a pedir.
+    permission_classes = [IsAuthenticated, IsEstudanteUser, IsOwnerOfPedidoSaida]
 
 class PerfilPresencaListView(generics.ListAPIView):
     """ Histórico de Presenças """

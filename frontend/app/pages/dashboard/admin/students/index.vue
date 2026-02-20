@@ -1,119 +1,112 @@
 <template>
-  <div class="space-y-6 dark:text-white">
-    <h1 class="text-3xl font-bold">Gestão de Estudantes</h1>
-
-    <!-- Barra de Ações: Pesquisa e Botão de Adicionar -->
-    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-      <!-- Barra de Pesquisa -->
-      <div class="w-full md:w-1/2">
-        <input 
-          v-model="searchQuery"
-          type="text" 
-          placeholder="Pesquisar por nome ou nº de estudante..."
-          class="w-full px-4 py-2 border rounded-md shadow-sm bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-        />
+  <div class="space-y-8 dark:text-white max-w-7xl mx-auto p-4 md:p-8">
+    
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">Gestão de Internos</h1>
+        <p class="text-stone-500 dark:text-gray-400 mt-1">Administre todos os estudantes registados no internato.</p>
       </div>
-      
-      <!-- Botão de Registar Novo -->
-      <NuxtLink 
-        to="/dashboard/admin/estudantes/registar" 
-        class="w-full md:w-auto px-4 py-2 text-center font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-      >
-        Registar Novo Estudante
+
+      <NuxtLink to="/dashboard/admin/registo-completo" class="px-6 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm shadow-lg hover:opacity-90 transition-all flex items-center gap-2">
+        <BootstrapIcon name="person-plus-fill" /> Novo Estudante
       </NuxtLink>
     </div>
 
-    <!-- Feedback de Carregamento -->
-    <div v-if="pending" class="text-center text-gray-500 dark:text-gray-400">
-      A carregar lista de estudantes...
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-[1.5rem] border border-stone-100 dark:border-gray-700 shadow-sm flex flex-col md:flex-row gap-4">
+      <div class="flex-1 relative">
+        <BootstrapIcon name="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
+        <input 
+          v-model="searchQuery" 
+          type="text" 
+          placeholder="Pesquisar por nome ou nº de estudante..." 
+          class="w-full pl-12 pr-4 py-3 bg-stone-50 dark:bg-gray-700 border-none rounded-xl focus:ring-2 focus:ring-rose-200 outline-none"
+        />
+      </div>
+      <div class="flex gap-2">
+         <button @click="filtroEstado = 'Activo'" :class="['px-4 py-2 rounded-xl text-xs font-bold border transition-all', filtroEstado === 'Activo' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-stone-500 border-stone-200']">Activos</button>
+         <button @click="filtroEstado = 'Inactivo'" :class="['px-4 py-2 rounded-xl text-xs font-bold border transition-all', filtroEstado === 'Inactivo' ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-stone-500 border-stone-200']">Inactivos</button>
+      </div>
     </div>
 
-    <!-- Tabela de Estudantes -->
-    <div v-else-if="students" class="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
-      <table class="w-full min-w-max">
-        <thead class="bg-gray-50 dark:bg-gray-700">
+    <div class="bg-white dark:bg-gray-800 rounded-[2rem] border border-stone-100 dark:border-gray-700 overflow-hidden shadow-sm">
+      <table class="w-full text-left border-collapse">
+        <thead class="bg-stone-50 dark:bg-gray-700/50">
           <tr>
-            <th class="table-header">Nome Completo</th>
-            <th class="table-header">N.º Estudante</th>
-            <th class="table-header">Quarto</th>
-            <th class="table-header">Curso</th>
-            <th class="table-header">Encarregado</th>
-            <th class="table-header">Ações</th>
+            <th class="p-5 text-xs font-bold text-stone-400 uppercase">Estudante</th>
+            <th class="p-5 text-xs font-bold text-stone-400 uppercase">Quarto / Curso</th>
+            <th class="p-5 text-xs font-bold text-stone-400 uppercase">Encarregado</th>
+            <th class="p-5 text-xs font-bold text-stone-400 uppercase">Estado</th>
+            <th class="p-5 text-xs font-bold text-stone-400 uppercase">Ação</th>
           </tr>
         </thead>
         <tbody class="divide-y dark:divide-gray-700">
-          
-          <tr v-if="students.length === 0">
-            <td colspan="6" class="p-6 text-center text-gray-500 dark:text-gray-400">
-              Nenhum estudante encontrado.
-            </td>
+          <tr v-if="pending" v-for="n in 3" :key="n">
+            <td colspan="5" class="p-5 animate-pulse bg-stone-50/50 h-16"></td>
           </tr>
-
-          <tr v-for="student in students" :key="student.utilizador_id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
-            <td class="table-cell font-medium">{{ student.nome_completo }}</td>
-            <td class="table-cell">{{ student.num_estudante }}</td>
-            <td class="table-cell">{{ student.quarto }}</td>
-            <td class="table-cell">{{ student.curso }}</td>
-            <td class="table-cell">{{ student.encarregado_nome }}</td>
-            <td class="table-cell">
-              <!-- Link para a página de detalhes (que criaremos a seguir) -->
-              <NuxtLink 
-                :to="`/dashboard/admin/estudantes/${student.utilizador_id}`" 
-                class="font-medium text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Ver Detalhes
-              </NuxtLink>
+          <tr v-else v-for="aluno in estudantesFiltrados" :key="aluno.utilizador_id" class="hover:bg-stone-50/50 transition-colors">
+            <td class="p-5">
+              <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center font-bold border border-rose-100">
+                  {{ aluno.nome_completo?.charAt(0) }}
+                </div>
+                <div>
+                  <p class="font-bold text-gray-800 dark:text-white">{{ aluno.nome_completo }}</p>
+                  <p class="text-[10px] text-stone-400 font-bold">ID: {{ aluno.num_estudante }}</p>
+                </div>
+              </div>
             </td>
+            <td class="p-5">
+              <p class="text-sm font-bold text-gray-700 dark:text-stone-300">Quarto {{ aluno.quarto }}</p>
+              <p class="text-xs text-stone-400">{{ aluno.curso }}</p>
+            </td>
+            <td class="p-5">
+               <p class="text-sm font-medium">{{ aluno.encarregado_nome }}</p>
+            </td>
+            <td class="p-5">
+              <span :class="['px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border', aluno.estado === 'Activo' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100']">
+                {{ aluno.estado }}
+              </span>
+            </td>
+<td class="p-5 text-right flex justify-end gap-2">
+  <NuxtLink 
+    :to="`/dashboard/admin/students/${aluno.utilizador_id}/historic`" 
+    class="p-2 hover:bg-rose-50 rounded-lg text-stone-400 hover:text-rose-500 transition-colors"
+    title="Ver Dossiê Completo"
+  >
+    <BootstrapIcon name="journal-richtext" class="w-5 h-5" />
+  </NuxtLink>
+
+  <NuxtLink 
+    :to="`/dashboard/admin/students/${aluno.utilizador_id}`" 
+    class="p-2 hover:bg-stone-100 rounded-lg text-stone-400 hover:text-gray-800 transition-colors"
+    title="Editar Dados"
+  >
+    <BootstrapIcon name="pencil-square" class="w-5 h-5" />
+  </NuxtLink>
+</td>
           </tr>
         </tbody>
       </table>
     </div>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-// Define o tipo de dados que esperamos da API
-interface Estudante {
-  utilizador_id: number;
-  nome_completo: string;
-  num_estudante: string;
-  quarto: string;
-  curso: string;
-  encarregado_nome: string;
-}
-
-// 2. Obter a função 'api' do composable
 const { api } = useApi()
-const searchQuery = ref('') // O estado da nossa barra de pesquisa (isto fica)
+const searchQuery = ref('')
+const filtroEstado = ref('Activo')
 
-// 3. O 'accessToken' e 'headers' manuais foram REMOVIDOS
-//    (O 'useApi' trata disto agora)
+// Buscar a lista do Admin
+const { data: estudantes, pending } = await useAsyncData('admin-students', () => api<any[]>('/admin/estudantes/'))
 
-// 4. Substituímos 'useFetch' por 'useAsyncData'
-const { data: students, pending, error, refresh } = await useAsyncData<Estudante[]>(
-  'student-list', // Chave única para este fetch
-  () => api('/estudantes/', { // O 'api' já sabe o baseURL e o token
-    // Passamos os query params para a sua função 'api'
-    query: {
-      search: searchQuery.value 
-    }
-  }),
-  {
-    lazy: true, // Não bloqueia a navegação
-    // 'watch' vai re-executar este useAsyncData sempre que
-    // o 'searchQuery' mudar, o que faz a pesquisa funcionar!
-    watch: [searchQuery]
-  }
-)
+// Filtragem local baseada na pesquisa
+const estudantesFiltrados = computed(() => {
+  if (!estudantes.value) return []
+  return estudantes.value.filter(a => {
+    const matchesSearch = a.nome_completo.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
+                          a.num_estudante.includes(searchQuery.value)
+    const matchesEstado = a.estado === filtroEstado.value
+    return matchesSearch && matchesEstado
+  })
+})
 </script>
-<style scoped>
-/* Estilos comuns para a tabela */
-.table-header {
-  @apply px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider;
-}
-.table-cell {
-  @apply px-6 py-4 whitespace-nowrap text-sm;
-}
-</style>

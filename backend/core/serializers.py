@@ -498,3 +498,9 @@ class SetNewPasswordSerializer(serializers.Serializer):
         # Se passou tudo, guardamos o user no contexto para usar no save/view
         attrs['user'] = user
         return attrs
+
+class AdminGlobalStatsSerializer(serializers.Serializer):
+    total_estudantes = serializers.IntegerField()
+    total_pedidos_pendentes = serializers.IntegerField()
+    total_divida_mes = serializers.DecimalField(max_digits=12, decimal_places=2)
+    ausencias_hoje = serializers.IntegerField()
