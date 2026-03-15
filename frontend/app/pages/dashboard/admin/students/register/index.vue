@@ -2,7 +2,7 @@
   <div class="space-y-6 dark:text-white max-w-4xl mx-auto">
     <div>
       <NuxtLink 
-        to="/dashboard/admin/estudantes" 
+        to="/dashboard/admin/students" 
         class="text-blue-600 dark:text-blue-400 hover:underline mb-2 block"
       >
         &larr; Voltar para a lista de estudantes

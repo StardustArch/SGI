@@ -20,13 +20,49 @@
 
       <nav class="flex-1 mt-6 space-y-2">
 
-        <ul v-if="userData?.perfil === 1">
+<ul v-if="userData?.perfil === 1">
           <li>
             <NuxtLink to="/dashboard/admin" class="nav-link">
               <BootstrapIcon name="house-fill" class="nav-icon" />
               <span v-if="isSidebarOpen" class="nav-text">Visão Geral</span>
             </NuxtLink>
           </li>
+
+          <li>
+            <NuxtLink to="/dashboard/admin/students" class="nav-link">
+              <BootstrapIcon name="people-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Gerir Estudantes</span>
+            </NuxtLink>
+          </li>
+
+          <li>
+            <NuxtLink to="/dashboard/admin/guardian" class="nav-link">
+              <BootstrapIcon name="person-lines-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Encarregados</span>
+            </NuxtLink>
+          </li>
+
+          <li>
+            <NuxtLink to="/dashboard/admin/finance" class="nav-link">
+              <BootstrapIcon name="wallet-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Finanças</span>
+            </NuxtLink>
+          </li>
+
+          <li>
+            <NuxtLink to="/dashboard/admin/attendance" class="nav-link">
+              <BootstrapIcon name="calendar-check-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Presenças</span>
+            </NuxtLink>
+          </li>
+
+          <li>
+            <NuxtLink to="/dashboard/admin/exits" class="nav-link">
+              <BootstrapIcon name="door-open-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Triagem de Saídas</span>
+            </NuxtLink>
+          </li>
+
           <li>
             <NuxtLink to="/dashboard/admin/reports" class="nav-link">
               <BootstrapIcon name="bar-chart-line-fill" class="nav-icon" />
@@ -34,11 +70,11 @@
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/dashboard/admin/students" class="nav-link">
-              <BootstrapIcon name="people-fill" class="nav-icon" />
-              <span v-if="isSidebarOpen" class="nav-text">Gerir Estudantes</span>
-            </NuxtLink>
-          </li>
+  <NuxtLink to="/dashboard/admin/discipline" class="nav-link">
+    <BootstrapIcon name="shield-exclamation" class="nav-icon" />
+    <span v-if="isSidebarOpen" class="nav-text">Disciplina</span>
+  </NuxtLink>
+</li>
         </ul>
 
         <ul v-else-if="userData?.perfil === 2">
@@ -150,25 +186,61 @@
 
       <nav class="flex-1 mt-6 space-y-2">
         
-        <ul v-if="userData?.perfil === 1">
+<ul v-if="userData?.perfil === 1">
           <li>
             <NuxtLink to="/dashboard/admin" class="nav-link">
               <BootstrapIcon name="house-fill" class="nav-icon" />
-              <span class="nav-text">Visão Geral</span>
+              <span v-if="isSidebarOpen" class="nav-text">Visão Geral</span>
             </NuxtLink>
           </li>
-          <li>
-            <NuxtLink to="/dashboard/admin/reports" class="nav-link">
-              <BootstrapIcon name="bar-chart-line-fill" class="nav-icon" />
-              <span class="nav-text">Relatórios</span>
-            </NuxtLink>
-          </li>
+
           <li>
             <NuxtLink to="/dashboard/admin/students" class="nav-link">
               <BootstrapIcon name="people-fill" class="nav-icon" />
-              <span class="nav-text">Gerir Estudantes</span>
+              <span v-if="isSidebarOpen" class="nav-text">Gerir Estudantes</span>
             </NuxtLink>
           </li>
+
+          <li>
+            <NuxtLink to="/dashboard/admin/guardian" class="nav-link">
+              <BootstrapIcon name="person-lines-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Encarregados</span>
+            </NuxtLink>
+          </li>
+
+          <li>
+            <NuxtLink to="/dashboard/admin/finance" class="nav-link">
+              <BootstrapIcon name="wallet-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Finanças</span>
+            </NuxtLink>
+          </li>
+
+          <li>
+            <NuxtLink to="/dashboard/admin/attendance" class="nav-link">
+              <BootstrapIcon name="calendar-check-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Presenças</span>
+            </NuxtLink>
+          </li>
+
+          <li>
+            <NuxtLink to="/dashboard/admin/exits" class="nav-link">
+              <BootstrapIcon name="door-open-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Triagem de Saídas</span>
+            </NuxtLink>
+          </li>
+
+          <li>
+            <NuxtLink to="/dashboard/admin/reports" class="nav-link">
+              <BootstrapIcon name="bar-chart-line-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Relatórios</span>
+            </NuxtLink>
+          </li>
+          <li>
+  <NuxtLink to="/dashboard/admin/discipline" class="nav-link">
+    <BootstrapIcon name="shield-exclamation" class="nav-icon" />
+    <span v-if="isSidebarOpen" class="nav-text">Disciplina</span>
+  </NuxtLink>
+</li>
         </ul>
 
         <ul v-else-if="userData?.perfil === 2">

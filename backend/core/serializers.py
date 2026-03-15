@@ -504,3 +504,29 @@ class AdminGlobalStatsSerializer(serializers.Serializer):
     total_pedidos_pendentes = serializers.IntegerField()
     total_divida_mes = serializers.DecimalField(max_digits=12, decimal_places=2)
     ausencias_hoje = serializers.IntegerField()
+
+class EncarregadoAdminSerializer(serializers.ModelSerializer):
+    """ Serializer para o Admin ver e editar Encarregados """
+    # Puxa os nomes dos educandos associados para facilitar a vida ao Admin
+    educandos = serializers.StringRelatedField(many=True, source='estudante_set', read_only=True)
+
+    class Meta:
+        model = Encarregado
+        fields = ['utilizador_id', 'nome_completo', 'telefone_principal', 'email_contacto', 'educandos']
+
+class MensalidadeAdminListSerializer(serializers.ModelSerializer):
+    """ Serializer para a tabela global de finanças do Admin """
+    # Puxa os dados do estudante através da Foreign Key
+    nome_estudante = serializers.CharField(source='estudante.nome_completo', read_only=True)
+    num_estudante = serializers.CharField(source='estudante.num_estudante', read_only=True)
+
+    class Meta:
+        model = Mensalidade
+        fields = [
+            'id', 
+            'nome_estudante', 
+            'num_estudante', 
+            'mes_referencia', 
+            'estado', 
+            'valor_pago'
+        ]

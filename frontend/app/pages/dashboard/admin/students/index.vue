@@ -7,7 +7,7 @@
         <p class="text-stone-500 dark:text-gray-400 mt-1">Administre todos os estudantes registados no internato.</p>
       </div>
 
-      <NuxtLink to="/dashboard/admin/registo-completo" class="px-6 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm shadow-lg hover:opacity-90 transition-all flex items-center gap-2">
+      <NuxtLink to="/dashboard/admin/students/register" class="px-6 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm shadow-lg hover:opacity-90 transition-all flex items-center gap-2">
         <BootstrapIcon name="person-plus-fill" /> Novo Estudante
       </NuxtLink>
     </div>

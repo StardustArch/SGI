@@ -22,8 +22,7 @@
           </div>
           <div>
             <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Arrecadado (Mês)</p>
-            <h3 class="text-2xl font-bold">{{ formatMoeda(stats?.total_arrecadado || 0) }}</h3>
-          </div>
+<h3 class="text-2xl font-bold">{{ formatMoeda(stats?.total_arrecadado_mes || 0) }}</h3>          </div>
         </div>
       </div>
 
@@ -34,8 +33,7 @@
           </div>
           <div>
             <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Pendentes</p>
-            <h3 class="text-2xl font-bold">{{ stats?.total_pendentes || 0 }} <span class="text-sm font-normal text-stone-400">Alunos</span></h3>
-          </div>
+<h3 class="text-2xl font-bold">{{ stats?.total_estudantes_pendentes || 0 }} <span class="text-sm font-normal text-stone-400">Alunos</span></h3>          </div>
         </div>
       </div>
 
@@ -46,8 +44,7 @@
           </div>
           <div>
             <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Em Atraso</p>
-            <h3 class="text-2xl font-bold text-rose-500">{{ stats?.total_atraso || 0 }}</h3>
-          </div>
+<h3 class="text-2xl font-bold text-rose-500">{{ 0 }}</h3>          </div>
         </div>
       </div>
     </div>
@@ -81,7 +78,7 @@
           </tr>
         </thead>
         <tbody class="divide-y dark:divide-gray-700">
-          <tr v-for="item in mensalidades" :key="item.id" class="hover:bg-stone-50/50 dark:hover:bg-gray-700/30 transition-colors">
+          <tr v-for="item in (mensalidades?.results || mensalidades || [])" :key="item.id" class="hover:bg-stone-50/50 dark:hover:bg-gray-700/30 transition-colors">
             <td class="p-5 font-bold text-gray-800 dark:text-white">
                {{ item.nome_estudante }}
                <p class="text-[10px] text-stone-400 font-normal">Nº: {{ item.num_estudante }}</p>
@@ -94,7 +91,7 @@
             </td>
             <td class="p-5">
               <NuxtLink 
-                :to="`/dashboard/admin/financas/confirmar/${item.id}`"
+                :to="`/dashboard/admin/finance/confirm/${item.id}`"
                 class="text-xs font-bold text-rose-500 hover:text-rose-700 underline"
               >
                 Detalhes / Confirmar
@@ -116,14 +113,13 @@ const filtroEstado = ref<string | null>(null)
 
 // 1. Buscar Resumo (Stats)
 const { data: stats } = await useAsyncData('admin-fin-stats', () => api<any>('/admin/financeiro/sumario/'))
-
+console.log(stats.value)
 // 2. Buscar Mensalidades (Paginado e Filtrado)
 const { data: mensalidades } = await useAsyncData(
   'admin-fin-list', 
-  () => api<any[]>('/admin/financeiro/mensalidades/'), // Endpoint que o Admin usa para ver tudo
+  () => api<any>('/admin/financeiro/mensalidades/'), // <--- Sem os []
   { watch: [pesquisa, filtroEstado] }
 )
-
 // Helpers Visuais
 const getStatusBadge = (estado: string) => {
   if (estado === 'Pago') return 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300'

@@ -87,7 +87,9 @@ urlpatterns = [
     path('perfil/pedidos-saida/<int:pk>/', views.PerfilPedidoSaidaDetailView.as_view(), name='perfil-detalhe-pedido'),
 
     path('admin/financeiro/gerar-lote/', views.GerarMensalidadesLoteView.as_view(), name='admin-gerar-mensalidades'),
-
+    path('admin/financeiro/sumario/', views.FinanceiroSummaryView.as_view(), name='admin-fin-sumario'),
+path('admin/financeiro/mensalidades/', views.AdminMensalidadeListView.as_view(), name='admin-fin-list'),
+path('admin/sancoes/', views.AdminSancaoListCreateView.as_view(), name='admin-sancoes-global'),
     path('admin/presencas/batch/', views.PresencaBatchCreateView.as_view(), name='admin-presenca-batch'),
     path('admin/pedidos-saida/', views.AdminPedidoSaidaListView.as_view(), name='admin-pedidos-list'),
     path('admin/pedidos-saida/<int:pk>/', views.AdminPedidoSaidaDetailView.as_view(), name='admin-pedido-detail'),
@@ -95,6 +97,8 @@ urlpatterns = [
 path('admin/estudantes/', views.EstudanteListView.as_view(), name='admin-student-list'),
 # Detalhes e Edição
 path('admin/estudantes/<int:pk>/', views.EstudanteDetailView.as_view(), name='admin-student-detail'),
+path('admin/encarregados/', views.AdminEncarregadoListView.as_view(), name='admin-encarregado-list'),
+path('admin/encarregados/<int:pk>/', views.AdminEncarregadoDetailView.as_view(), name='admin-encarregado-detail'),
 # -----------------------------------------------------------------
 # --- PERFIL DE ESTUDANTE ---
 # -----------------------------------------------------------------

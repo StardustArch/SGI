@@ -5,7 +5,7 @@ from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Utilizador, Perfil, Encarregado, Estudante, Mensalidade, Sancao, PresencaEstudo, PedidoSaida
-from .serializers import UserSerializer, RegistoCompletoSerializer, MensalidadeSerializer, MensalidadeUpdateSerializer, SancaoSerializer, PresencaBatchSerializer, EstudanteListSerializer, PresencaEstudoSerializer, PedidoSaidaSerializer, PedidoSaidaListAdminSerializer, PedidoSaidaUpdateAdminSerializer, FinanceiroSummarySerializer,TopInfratoresSerializer, TopAusentesSerializer, TipoSancaoSummarySerializer, PedidoSaidaSummarySerializer, EstudanteDetailSerializer, SancaoUpdateSerializer,PresencaEstudoUpdateSerializer, EstudantePerfilSerializer, ChangePasswordSerializer, PedidoSaidaEncarregadoUpdateSerializer, EncarregadoProfileUpdateSerializer, PasswordResetRequestSerializer, SetNewPasswordSerializer
+from .serializers import UserSerializer, RegistoCompletoSerializer, MensalidadeSerializer, MensalidadeUpdateSerializer, SancaoSerializer, PresencaBatchSerializer, EstudanteListSerializer, PresencaEstudoSerializer, PedidoSaidaSerializer, PedidoSaidaListAdminSerializer, PedidoSaidaUpdateAdminSerializer, FinanceiroSummarySerializer,TopInfratoresSerializer, TopAusentesSerializer, TipoSancaoSummarySerializer, PedidoSaidaSummarySerializer, EstudanteDetailSerializer, SancaoUpdateSerializer,PresencaEstudoUpdateSerializer, EstudantePerfilSerializer, ChangePasswordSerializer, PedidoSaidaEncarregadoUpdateSerializer, EncarregadoProfileUpdateSerializer, PasswordResetRequestSerializer, SetNewPasswordSerializer, EncarregadoAdminSerializer, MensalidadeAdminListSerializer
 from .permissions import IsAdminUser, IsEstudanteUser, IsOwnerOfPedidoSaida, IsEncarregadoUser
 from django.contrib.auth import get_user_model  # <-- ADICIONE ESTA LINHA
 from django.db import transaction  # <-- ADICIONE ESTA LINHA
@@ -525,6 +525,50 @@ class TopInfratoresView(APIView):
         ).order_by('-total')[:5]
         
         return Response(dados)
+
+class AdminEncarregadoListView(generics.ListAPIView):
+    """ Admin: Lista todos os encarregados com pesquisa """
+    queryset = Encarregado.objects.all().order_by('nome_completo')
+    serializer_class = EncarregadoAdminSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['nome_completo', 'telefone_principal', 'email_contacto']
+
+class AdminEncarregadoDetailView(generics.RetrieveUpdateAPIView):
+    """ Admin: Vê e edita um encarregado específico """
+    queryset = Encarregado.objects.all()
+    serializer_class = EncarregadoAdminSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+class AdminMensalidadeListView(generics.ListAPIView):
+    """
+    Endpoint: /api/v1/admin/financeiro/mensalidades/
+    Lista todas as mensalidades de todos os alunos.
+    Permite filtrar por estado e pesquisar por nome/número.
+    """
+    queryset = Mensalidade.objects.all().order_by('-mes_referencia')
+    serializer_class = MensalidadeAdminListSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    # Ativa a pesquisa e os filtros exatos
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    
+    # Filtro exato no dropdown (Pendente, Pago, Atraso)
+    filterset_fields = ['estado']
+    
+    # Pesquisa de texto livre na barra de pesquisa
+    search_fields = ['estudante__nome_completo', 'estudante__num_estudante']
+
+class AdminSancaoListCreateView(generics.ListCreateAPIView):
+    """ Lista todas as sanções e permite criar novas. """
+    queryset = Sancao.objects.all().order_by('-data_ocorrencia')
+    serializer_class = SancaoSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def perform_create(self, serializer):
+        # Regista automaticamente qual foi o admin que deu o castigo
+        serializer.save(admin_id_registo=self.request.user)
+    # O utilizador_id é a Primary Key do Encarregado
 # Ficheiro: backend/core/views.py
 # ... (Manter as views do Estudante) ...
 
