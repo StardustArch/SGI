@@ -32,6 +32,13 @@ ALLOWED_HOSTS = [
     'sgi-n29z.onrender.com',
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://sgi-n29z.onrender.com',
+    # Se o teu frontend Nuxt for ficar noutro domínio no futuro, adiciona-o aqui também.
+    # Ex: 'https://meu-frontend-nuxt.vercel.app',
+    # 'http://localhost:3000',
+    'https://sgixp.vercel.app',
+]
 
 # Application definition
 
@@ -168,4 +175,5 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://frontend:3000",
+    "https://sgixp.vercel.app"
 ]
