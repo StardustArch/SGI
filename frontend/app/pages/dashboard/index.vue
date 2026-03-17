@@ -75,7 +75,7 @@ watchEffect(() => {
     } else if (perfil === 3) {
       // É Encarregado -> Redireciona para o dashboard de encarregado
       isRedirecting.value = true
-      router.replace('/dashboard/foreman')
+      router.replace('/dashboard/guardian')
       
     }
     // Se for perfil 1 (Admin), não faz nada.
