@@ -29,6 +29,7 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     'backend',  # <-- Adicione esta linha
+    'sgi-n29z.onrender.com',
 ]
 
 
