@@ -6,7 +6,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Utilizador, Perfil, Encarregado, Estudante, Mensalidade, Sancao, PresencaEstudo, PedidoSaida
 from .serializers import UserSerializer, RegistoCompletoSerializer, MensalidadeSerializer, MensalidadeUpdateSerializer, SancaoSerializer, PresencaBatchSerializer, EstudanteListSerializer, PresencaEstudoSerializer, PedidoSaidaSerializer, PedidoSaidaListAdminSerializer, PedidoSaidaUpdateAdminSerializer, FinanceiroSummarySerializer,TopInfratoresSerializer, TopAusentesSerializer, TipoSancaoSummarySerializer, PedidoSaidaSummarySerializer, EstudanteDetailSerializer, SancaoUpdateSerializer,PresencaEstudoUpdateSerializer, EstudantePerfilSerializer, ChangePasswordSerializer, PedidoSaidaEncarregadoUpdateSerializer, EncarregadoProfileUpdateSerializer, PasswordResetRequestSerializer, SetNewPasswordSerializer, EncarregadoAdminSerializer, MensalidadeAdminListSerializer
-from .permissions import IsAdminUser, IsEstudanteUser, IsOwnerOfPedidoSaida, IsEncarregadoUser
+from .permissions import (
+    IsAdminUser, IsGestorOuSuporte, IsFinanceiroOuSuporte, 
+    IsDisciplinarOuSuporte, IsEstudanteUser, IsOwnerOfPedidoSaida, IsEncarregadoUser
+)
 from django.contrib.auth import get_user_model  # <-- ADICIONE ESTA LINHA
 from django.db import transaction  # <-- ADICIONE ESTA LINHA
 from django.shortcuts import get_object_or_404 # <-- ADICIONE ESTA
@@ -52,7 +55,7 @@ class RegistoCompletoView(generics.CreateAPIView):
     serializer_class = RegistoCompletoSerializer
     
     # Protegido: Tem de estar autenticado E ser um Admin.
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsGestorOuSuporte]
 
     # Usamos 'create' em vez de 'perform_create' 
     # para controlar a lógica e a resposta.
@@ -172,7 +175,7 @@ class MensalidadeListCreateView(generics.ListCreateAPIView):
     Acesso: Só Admin.
     """
     serializer_class = MensalidadeSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsFinanceiroOuSuporte]
 
     def get_queryset(self):
         """
@@ -206,7 +209,7 @@ class MensalidadeDetailView(generics.RetrieveUpdateAPIView):
     Acesso: Só Admin.
     """
     queryset = Mensalidade.objects.all()
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsFinanceiroOuSuporte]
     
     # IMPORTANTE: Temos de lhe dizer para usar o serializer
     # de actualização (Update) ou o de listagem (Retrieve)
@@ -250,7 +253,7 @@ class SancaoListCreateView(generics.ListCreateAPIView):
     Acesso: Só Admin.
     """
     serializer_class = SancaoSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsDisciplinarOuSuporte]
 
     def get_queryset(self):
         """
@@ -283,7 +286,7 @@ class PresencaBatchCreateView(APIView):
     Endpoint para criar (POST) todas as presenças de estudo
     de um dia específico de uma só vez (em lote).
     """
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsDisciplinarOuSuporte]
 
     def post(self, request, *args, **kwargs):
         serializer = PresencaBatchSerializer(data=request.data)
@@ -411,7 +414,7 @@ class AdminPedidoSaidaDetailView(generics.UpdateAPIView):
     """
     queryset = PedidoSaida.objects.all()
     serializer_class = PedidoSaidaUpdateAdminSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser] # Protegido!
+    permission_classes = [IsAuthenticated, IsGestorOuSuporte] # Protegido!
 
     # Ficheiro: backend/core/views.py
 # Dentro da classe AdminPedidoSaidaDetailView
@@ -443,7 +446,7 @@ class GerarMensalidadesLoteView(APIView):
     Cria registos de mensalidade 'Pendente' para TODOS os estudantes 
     ativos para o mês selecionado.
     """
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsFinanceiroOuSuporte]
 
     def post(self, request):
         mes_ref_str = request.data.get('mes_referencia') # Espera "YYYY-MM-01"
@@ -491,7 +494,7 @@ class PortariaConfirmarMovimentoView(APIView):
     """
     Marca a hora exata que o aluno SAIU ou REGRESSOU.
     """
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsGestorOuSuporte]
 
     def patch(self, request, pk):
         pedido = get_object_or_404(PedidoSaida, pk=pk)
@@ -513,7 +516,7 @@ class PortariaConfirmarMovimentoView(APIView):
 
 # Exemplo de lógica para o Top 5 Infratores
 class TopInfratoresView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsDisciplinarOuSuporte]
     
     def get(self, request):
         hoje = timezone.now().date()
@@ -530,7 +533,7 @@ class AdminEncarregadoListView(generics.ListAPIView):
     """ Admin: Lista todos os encarregados com pesquisa """
     queryset = Encarregado.objects.all().order_by('nome_completo')
     serializer_class = EncarregadoAdminSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsGestorOuSuporte]
     filter_backends = [filters.SearchFilter]
     search_fields = ['nome_completo', 'telefone_principal', 'email_contacto']
 
@@ -538,7 +541,7 @@ class AdminEncarregadoDetailView(generics.RetrieveUpdateAPIView):
     """ Admin: Vê e edita um encarregado específico """
     queryset = Encarregado.objects.all()
     serializer_class = EncarregadoAdminSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsGestorOuSuporte]
 
 class AdminMensalidadeListView(generics.ListAPIView):
     """
@@ -548,7 +551,7 @@ class AdminMensalidadeListView(generics.ListAPIView):
     """
     queryset = Mensalidade.objects.all().order_by('-mes_referencia')
     serializer_class = MensalidadeAdminListSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsFinanceiroOuSuporte]
     
     # Ativa a pesquisa e os filtros exatos
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -563,7 +566,7 @@ class AdminSancaoListCreateView(generics.ListCreateAPIView):
     """ Lista todas as sanções e permite criar novas. """
     queryset = Sancao.objects.all().order_by('-data_ocorrencia')
     serializer_class = SancaoSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsDisciplinarOuSuporte]
 
     def perform_create(self, serializer):
         # Regista automaticamente qual foi o admin que deu o castigo
@@ -760,7 +763,7 @@ class FinanceiroSummaryView(APIView):
     Endpoint para o Dashboard do Admin.
     GET: Retorna um sumário financeiro do mês corrente.
     """
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsFinanceiroOuSuporte]
 
     def get(self, request, *args, **kwargs):
         # 1. Obter o mês e ano actuais
@@ -859,7 +862,7 @@ class TopAusentesView(APIView):
     Endpoint para o Dashboard do Admin.
     GET: Retorna os 5 estudantes com mais ausências/justificações este mês.
     """
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsDisciplinarOuSuporte]
     
     def get(self, request, *args, **kwargs):
         # 1. Obter o primeiro dia do mês actual
@@ -895,7 +898,7 @@ class TipoSancaoSummaryView(APIView):
     Endpoint para o Dashboard do Admin.
     GET: Retorna um sumário de sanções agrupadas por tipo.
     """
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsDisciplinarOuSuporte]
     
     def get(self, request, *args, **kwargs):
         # 1. Obter o primeiro dia do mês actual
@@ -1005,7 +1008,7 @@ class EstudanteDetailView(generics.RetrieveUpdateAPIView):
     """
     queryset = Estudante.objects.all()
     serializer_class = EstudanteDetailSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsGestorOuSuporte]
     lookup_field = 'pk' # A PK do Estudante é o 'utilizador_id'
 
 class EstudantePresencaListView(generics.ListAPIView):
@@ -1014,7 +1017,7 @@ class EstudantePresencaListView(generics.ListAPIView):
     GET: Listar o histórico de presenças de UM estudante.
     """
     serializer_class = PresencaEstudoSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsDisciplinarOuSuporte]
 
     def get_queryset(self):
         """ Filtra presenças pelo estudante_pk da URL """
@@ -1030,7 +1033,7 @@ class SancaoDetailView(generics.RetrieveUpdateDestroyAPIView):
     DELETE: Apagar uma sanção específica.
     """
     queryset = Sancao.objects.all()
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsDisciplinarOuSuporte]
 
     # Usar serializers diferentes para GET vs PATCH
     def get_serializer_class(self):
@@ -1046,7 +1049,7 @@ class PresencaEstudoDetailView(generics.RetrieveUpdateDestroyAPIView):
     DELETE: Apagar um registo.
     """
     queryset = PresencaEstudo.objects.all()
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsDisciplinarOuSuporte]
 
     # Usar serializers diferentes para GET vs PATCH
     def get_serializer_class(self):

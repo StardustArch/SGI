@@ -1,64 +1,87 @@
 # Ficheiro: backend/core/permissions.py
 from rest_framework import permissions
 
+# -----------------------------------------------------------
+# PERMISSÕES ADMINISTRATIVAS (Monografia)
+# -----------------------------------------------------------
+
 class IsAdminUser(permissions.BasePermission):
     """
-    Permissão customizada para permitir acesso apenas a utilizadores
-    com o perfil de 'Administrador'.
+    Permissão GERAL para qualquer membro do staff.
+    Permite o acesso se for Gestor, Financeiro, Disciplinar ou Suporte.
+    (Útil para dashboards gerais onde todos os funcionários entram).
     """
-
     def has_permission(self, request, view):
-        # Verifica se o utilizador está autenticado E
-        # se o perfil do utilizador (ligado ao token) está definido
         if not request.user or not request.user.is_authenticated or not request.user.perfil:
             return False
         
-        # Permite apenas se o nome do perfil for 'Administrador'
-        return request.user.perfil.nome_perfil == 'Administrador'
+        perfis_admin = ['Gestor', 'Financeiro', 'Disciplinar', 'Suporte', 'Administrador']
+        return request.user.perfil.nome_perfil in perfis_admin
+
+
+class IsGestorOuSuporte(permissions.BasePermission):
+    """
+    Acesso restrito à Direção do Internato e Suporte Técnico.
+    (Ex: Registar novos estudantes, ver relatórios globais).
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated or not request.user.perfil:
+            return False
+        
+        return request.user.perfil.nome_perfil in ['Gestor', 'Suporte', 'Administrador']
+
+
+class IsFinanceiroOuSuporte(permissions.BasePermission):
+    """
+    Acesso ao Módulo Financeiro.
+    Apenas o Administrador Financeiro, Gestor e Suporte.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated or not request.user.perfil:
+            return False
+        
+        return request.user.perfil.nome_perfil in ['Financeiro', 'Gestor', 'Suporte', 'Administrador']
+
+
+class IsDisciplinarOuSuporte(permissions.BasePermission):
+    """
+    Acesso ao Módulo Disciplinar e Presenças.
+    Apenas o Responsável Disciplinar, Gestor e Suporte.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated or not request.user.perfil:
+            return False
+        
+        return request.user.perfil.nome_perfil in ['Disciplinar', 'Gestor', 'Suporte', 'Administrador']
+
+
+# -----------------------------------------------------------
+# PERMISSÕES DE UTENTES (Estudante & Encarregado)
+# -----------------------------------------------------------
 
 class IsEstudanteUser(permissions.BasePermission):
     """
-    Permissão customizada para permitir acesso apenas a utilizadores
-    com o perfil de 'Estudante'.
+    Permite acesso apenas a utilizadores com o perfil de 'Estudante'.
     """
     def has_permission(self, request, view):
-        # Verifica se o utilizador está autenticado E tem um perfil
         if not request.user or not request.user.is_authenticated or not request.user.perfil:
             return False
-        
-        # Permite apenas se o nome do perfil for 'Estudante'
         return request.user.perfil.nome_perfil == 'Estudante'
 
-# Ficheiro: backend/core/permissions.py
-# ... (Manter IsEstudanteUser) ...
-
-# --- ADICIONE ESTA NOVA CLASSE ---
-
-class IsOwnerOfPedidoSaida(permissions.BasePermission):
-    """
-    Permissão para garantir que o estudante (ou encarregado)
-    só pode ver os seus próprios pedidos.
-    """
-    def has_object_permission(self, request, view, obj):
-        # 'obj' é o PedidoSaida
-        # request.user.id é a PK do estudante logado
-        return obj.estudante_id == request.user.id
-
-
-# Ficheiro: backend/core/permissions.py
-# ... (Manter IsEstudanteUser e IsOwnerOfPedidoSaida) ...
-
-# --- ADICIONE ESTA NOVA CLASSE ---
 
 class IsEncarregadoUser(permissions.BasePermission):
     """
-    Permissão customizada para permitir acesso apenas a utilizadores
-    com o perfil de 'Encarregado'.
+    Permite acesso apenas a utilizadores com o perfil de 'Encarregado'.
     """
     def has_permission(self, request, view):
-        # Verifica se o utilizador está autenticado E tem um perfil
         if not request.user or not request.user.is_authenticated or not request.user.perfil:
             return False
-        
-        # Permite apenas se o nome do perfil for 'Encarregado'
         return request.user.perfil.nome_perfil == 'Encarregado'
+
+
+class IsOwnerOfPedidoSaida(permissions.BasePermission):
+    """
+    Garante que o estudante só pode ver os seus próprios pedidos.
+    """
+    def has_object_permission(self, request, view, obj):
+        return obj.estudante_id == request.user.id

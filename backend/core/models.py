@@ -47,7 +47,11 @@ class UtilizadorManager(BaseUserManager):
 class Perfil(models.Model):
     """ Tabela de 'Roles' (Perfis) para definir permissões. """
     NOME_CHOICES = [
-        ('Administrador', 'Administrador'),
+        ('Gestor', 'Gestor do Internato'),
+        ('Financeiro', 'Administrador Financeiro'),
+        ('Disciplinar', 'Responsável Disciplinar'),
+        ('Suporte', 'Suporte Técnico'), # Este é o "Super Admin" atual
+        # Os nossos utentes:
         ('Estudante', 'Estudante'),
         ('Encarregado', 'Encarregado'),
     ]
