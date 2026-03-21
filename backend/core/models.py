@@ -106,23 +106,59 @@ class Encarregado(models.Model):
     def __str__(self):
         return self.nome_completo
 
+class Quarto(models.Model):
+    """ Gestão física de alojamento e vagas. """
+    GENERO_CHOICES = [('M', 'Masculino'), ('F', 'Feminino')]
+    ESTADO_CHOICES = [('Activo', 'Activo'), ('Manutenção', 'Em Manutenção'), ('Inactivo', 'Inactivo')]
+
+    numero = models.CharField(max_length=10, unique=True)
+    bloco = models.CharField(max_length=50) # Ex: Bloco A, Ala Sul
+    capacidade_maxima = models.PositiveIntegerField()
+    genero_permitido = models.CharField(max_length=1, choices=GENERO_CHOICES)
+    estado = models.CharField(max_length=15, choices=ESTADO_CHOICES, default='Activo')
+    
+    # Campo para facilitar consultas rápidas, como pede a monografia
+    ocupacao_atual = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Quarto"
+        verbose_name_plural = "Quartos"
+
+    def __str__(self):
+        return f"Quarto {self.numero} - {self.bloco} ({self.genero_permitido})"
+
+    @property
+    def vagas_disponiveis(self):
+        return self.capacidade_maxima - self.ocupacao_atual
+
 class Estudante(models.Model):
     """ O registo central do internato. """
-    # Ligação 1-para-1 com o Utilizador (só 1 login por estudante)
     utilizador = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True)
-    encarregado = models.ForeignKey(Encarregado, on_delete=models.PROTECT) # Proteger: não apagar encarregado se tiver estudante
+    encarregado = models.ForeignKey(Encarregado, on_delete=models.PROTECT)
     
     nome_completo = models.CharField(max_length=255)
     num_estudante = models.CharField(max_length=50, unique=True)
-    quarto = models.CharField(max_length=10)
-    curso = models.CharField(max_length=100)
     
+    # ---- ALTERAÇÕES AQUI ----
+    GENERO_CHOICES = [('M', 'Masculino'), ('F', 'Feminino')]
+    genero = models.CharField(max_length=1, choices=GENERO_CHOICES) # Novo campo necessário
+    
+    # De CharField para ForeignKey
+    quarto = models.ForeignKey(
+        'Quarto', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name="estudantes"
+    )
+    # ------------------------- 
+
+    curso = models.CharField(max_length=100)
     ESTADO_CHOICES = [('Activo', 'Activo'), ('Inactivo', 'Inactivo')]
     estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='Activo')
 
     def __str__(self):
         return self.nome_completo
-
 # -----------------------------------------------------------
 # 2. MÓDULOS DE GESTÃO (FINANCEIRO, DISCIPLINA, ETC.)
 # -----------------------------------------------------------
@@ -201,3 +237,4 @@ class PedidoSaida(models.Model):
     estado = models.CharField(max_length=30, choices=ESTADO_CHOICES, default='Pendente')
     data_aprovacao_encarregado = models.DateTimeField(null=True, blank=True)
     observacao_admin = models.TextField(null=True, blank=True)
+

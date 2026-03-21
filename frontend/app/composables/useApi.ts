@@ -13,7 +13,9 @@ export const useApi = () => {
         }
 
         try {
-            return await $fetch<T>(`/api/v1${url}`, options)
+            const data = await $fetch<T>(`/api/v1${url}`, options)
+            console.log(data)
+            return data;
         } catch (error: any) {
             // 🔹 2. Detecta token expirado
             if (error?.response?.status === 401 && refreshToken.value) {

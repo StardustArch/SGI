@@ -100,6 +100,22 @@ path('admin/estudantes/<int:pk>/', views.EstudanteDetailView.as_view(), name='ad
 path('admin/encarregados/', views.AdminEncarregadoListView.as_view(), name='admin-encarregado-list'),
 path('admin/encarregados/<int:pk>/', views.AdminEncarregadoDetailView.as_view(), name='admin-encarregado-detail'),
 # -----------------------------------------------------------------
+    # --- GESTÃO DE QUARTOS (NOVO MÓDULO) ---
+    # -----------------------------------------------------------------
+    # GET: Lista todos os quartos / POST: Cria novo quarto
+    path(
+        'admin/quartos/', 
+        views.QuartoListCreateView.as_view(), 
+        name='admin-quarto-list'
+    ),
+    
+    # GET: Ver detalhes / PATCH: Editar / DELETE: Apagar quarto
+    path(
+        'admin/quartos/<int:pk>/', 
+        views.QuartoDetailView.as_view(), 
+        name='admin-quarto-detail'
+    ),
+# -----------------------------------------------------------------
 # --- PERFIL DE ESTUDANTE ---
 # -----------------------------------------------------------------
 

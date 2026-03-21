@@ -9,7 +9,8 @@ from .models import (
     Mensalidade,
     PresencaEstudo,
     Sancao,
-    PedidoSaida
+    PedidoSaida,
+    Quarto
 )
 
 admin.site.register(Utilizador)
@@ -20,3 +21,4 @@ admin.site.register(Mensalidade)
 admin.site.register(PresencaEstudo)
 admin.site.register(Sancao)
 admin.site.register(PedidoSaida)
+admin.site.register(Quarto)

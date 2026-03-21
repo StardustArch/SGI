@@ -15,7 +15,7 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/api/**': {
-      proxy: 'https://sgi-n29z.onrender.com/api/**'
+      proxy: 'http://backend:8000/api/**'
     }
   },
   // css: ['~/assets/css/main.css'],

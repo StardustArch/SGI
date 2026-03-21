@@ -1,6 +1,6 @@
 # Ficheiro: backend/core/serializers.py
 from rest_framework import serializers
-from .models import Utilizador, Mensalidade, Sancao, Estudante, PresencaEstudo, PedidoSaida, Encarregado
+from .models import Utilizador, Mensalidade, Sancao, Estudante, PresencaEstudo, PedidoSaida, Encarregado, Quarto
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
@@ -29,8 +29,9 @@ class EstudanteRegistoSerializer(serializers.Serializer):
     email = serializers.EmailField()
     nome_completo = serializers.CharField(max_length=255)
     num_estudante = serializers.CharField(max_length=50)
-    quarto = serializers.CharField(max_length=10)
     curso = serializers.CharField(max_length=100)
+    genero = serializers.ChoiceField(choices=[('M', 'Masculino'), ('F', 'Feminino')])
+    quarto = serializers.PrimaryKeyRelatedField(queryset=Quarto.objects.all())
 
 class RegistoCompletoSerializer(serializers.Serializer):
     """
@@ -529,4 +530,15 @@ class MensalidadeAdminListSerializer(serializers.ModelSerializer):
             'mes_referencia', 
             'estado', 
             'valor_pago'
+        ]
+
+
+class QuartoSerializer(serializers.ModelSerializer):
+    vagas_disponiveis = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Quarto
+        fields = [
+            'id', 'numero', 'bloco', 'capacidade_maxima', 
+            'genero_permitido', 'estado', 'ocupacao_atual', 'vagas_disponiveis'
         ]

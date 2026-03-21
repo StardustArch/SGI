@@ -62,7 +62,12 @@
               <span v-if="isSidebarOpen" class="nav-text">Triagem de Saídas</span>
             </NuxtLink>
           </li>
-
+<li>
+            <NuxtLink to="/dashboard/admin/rooms" class="nav-link">
+              <BootstrapIcon name="door-closed-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Gestão de Quartos</span>
+            </NuxtLink>
+          </li>
           <li>
             <NuxtLink to="/dashboard/admin/reports" class="nav-link">
               <BootstrapIcon name="bar-chart-line-fill" class="nav-icon" />
@@ -228,7 +233,12 @@
               <span v-if="isSidebarOpen" class="nav-text">Triagem de Saídas</span>
             </NuxtLink>
           </li>
-
+<li>
+            <NuxtLink to="/dashboard/admin/rooms" class="nav-link">
+              <BootstrapIcon name="door-closed-fill" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">Gestão de Quartos</span>
+            </NuxtLink>
+          </li>
           <li>
             <NuxtLink to="/dashboard/admin/reports" class="nav-link">
               <BootstrapIcon name="bar-chart-line-fill" class="nav-icon" />
