@@ -43,8 +43,8 @@
             <BootstrapIcon name="exclamation-circle" class="w-8 h-8" />
           </div>
           <div>
-            <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Em Atraso</p>
-<h3 class="text-2xl font-bold text-rose-500">{{ 0 }}</h3>          </div>
+                  <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Em Atraso</p>
+      <h3 class="text-2xl font-bold text-rose-500">{{ stats?.total_estudantes_atraso || 0 }}</h3>          </div>
         </div>
       </div>
     </div>

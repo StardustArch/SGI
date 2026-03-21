@@ -88,19 +88,28 @@
         </form>
       </div>
 
-      <div v-else class="bg-emerald-50 dark:bg-emerald-900/20 rounded-[2rem] p-8 border border-emerald-100 dark:border-emerald-800 text-center">
-        <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-800 text-emerald-500 dark:text-emerald-300 rounded-full flex items-center justify-center mx-auto mb-4">
-          <BootstrapIcon name="check2-all" class="w-8 h-8" />
-        </div>
-        <h3 class="text-xl font-bold text-emerald-700 dark:text-emerald-400">Mensalidade Paga</h3>
-        <p class="text-emerald-600 dark:text-emerald-500 mt-2 text-sm">
-          Este pagamento foi confirmado em <b>{{ formatDate(mensalidade.data_pagamento_confirmado) }}</b> 
-          via <b>{{ mensalidade.metodo_pagamento }}</b>.
-        </p>
-        <p v-if="mensalidade.referencia_comprovativo" class="text-emerald-600 dark:text-emerald-500 text-xs mt-1">
-          Ref: {{ mensalidade.referencia_comprovativo }}
-        </p>
-      </div>
+<div v-else class="bg-emerald-50 dark:bg-emerald-900/20 rounded-[2rem] p-8 border border-emerald-100 dark:border-emerald-800 text-center">
+  <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-800 text-emerald-500 dark:text-emerald-300 rounded-full flex items-center justify-center mx-auto mb-4">
+    <BootstrapIcon name="check2-all" class="w-8 h-8" />
+  </div>
+  <h3 class="text-xl font-bold text-emerald-700 dark:text-emerald-400">Mensalidade Paga</h3>
+  <p class="text-emerald-600 dark:text-emerald-500 mt-2 text-sm">
+    Este pagamento foi confirmado em <b>{{ formatDate(mensalidade.data_pagamento_confirmado) }}</b> 
+    via <b>{{ mensalidade.metodo_pagamento }}</b>.
+  </p>
+  <p v-if="mensalidade.referencia_comprovativo" class="text-emerald-600 dark:text-emerald-500 text-xs mt-1">
+    Ref: {{ mensalidade.referencia_comprovativo }}
+  </p>
+
+  <!-- NOVO BOTÃO PARA DOWNLOAD DO RECIBO -->
+  <button 
+    @click="downloadRecibo"
+    class="mt-6 px-6 py-3 rounded-xl bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-bold text-sm hover:bg-emerald-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2 mx-auto"
+  >
+    <BootstrapIcon name="file-pdf-fill" />
+    Baixar Recibo (PDF)
+  </button>
+</div>
 
     </div>
   </div>
@@ -149,6 +158,31 @@ async function confirmarPagamento() {
 const formatMoeda = (valor: any) => new Intl.NumberFormat('pt-MZ', { style: 'currency', currency: 'MZN' }).format(Number(valor))
 const formatMes = (data: string) => new Date(data).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' }).toUpperCase()
 const formatDate = (data: string) => new Date(data).toLocaleDateString('pt-PT')
+
+async function downloadRecibo() {
+  try {
+    // Chamada para o endpoint de recibo
+    const blob = await api<Blob>(`/admin/mensalidades/${route.params.id}/recibo/`, {
+      method: 'GET',
+      responseType: 'blob'
+    })
+
+    // Criar link de download
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `recibo_${route.params.id}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  } catch (error: any) {
+    console.error('Erro ao baixar recibo:', error)
+    // Trata mensagem de erro amigável
+    const message = error?.data?.erro || 'Não foi possível gerar o recibo. Verifique se o pagamento está confirmado.'
+    alert(message)
+  }
+}
 </script>
 
 <style scoped>

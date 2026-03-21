@@ -1,4 +1,3 @@
-// composables/useApi.ts
 import { useAuth } from '~/composables/useAuth'
 
 export const useApi = () => {
@@ -6,16 +5,25 @@ export const useApi = () => {
     const router = useRouter()
 
     async function api<T>(url: string, options: any = {}): Promise<T> {
-        // 🔹 1. Adiciona token de acesso (se existir)
+        // Guardar responseType se fornecido
+        const responseType = options.responseType
+        delete options.responseType // Remove para não interferir
+
+        // Configura cabeçalhos com token
         options.headers = {
             ...(options.headers || {}),
             Authorization: accessToken.value ? `Bearer ${accessToken.value}` : undefined,
         }
 
+        // Configuração para $fetch
+        const fetchOptions: any = { ...options }
+        if (responseType === 'blob') {
+            fetchOptions.responseType = 'blob'
+        }
+
         try {
-            const data = await $fetch<T>(`/api/v1${url}`, options)
-            console.log(data)
-            return data;
+            const data = await $fetch<T>(`/api/v1${url}`, fetchOptions)
+            return data
         } catch (error: any) {
             // 🔹 2. Detecta token expirado
             if (error?.response?.status === 401 && refreshToken.value) {
@@ -40,7 +48,12 @@ export const useApi = () => {
 
                     // 🔹 4. Refaz o pedido original com o novo token
                     options.headers.Authorization = `Bearer ${data.access}`
-                    return await $fetch<T>(`/api/v1${url}`, options)
+                    // Reaplica responseType se necessário
+                    const retryOptions = { ...options }
+                    if (responseType === 'blob') {
+                        retryOptions.responseType = 'blob'
+                    }
+                    return await $fetch<T>(`/api/v1${url}`, retryOptions)
                 } catch (refreshError) {
                     console.error('Falha no refresh token:', refreshError)
                     clearTokens()

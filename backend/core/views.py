@@ -4,7 +4,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Utilizador, Perfil, Encarregado, Estudante, Mensalidade, Sancao, PresencaEstudo, PedidoSaida, Quarto
+from .models import Utilizador, Perfil, Encarregado, Estudante, Mensalidade, Sancao, PresencaEstudo, PedidoSaida, Quarto, Recibo
 from .serializers import UserSerializer, RegistoCompletoSerializer, MensalidadeSerializer, MensalidadeUpdateSerializer, SancaoSerializer, PresencaBatchSerializer, EstudanteListSerializer, PresencaEstudoSerializer, PedidoSaidaSerializer, PedidoSaidaListAdminSerializer, PedidoSaidaUpdateAdminSerializer, FinanceiroSummarySerializer,TopInfratoresSerializer, TopAusentesSerializer, TipoSancaoSummarySerializer, PedidoSaidaSummarySerializer, EstudanteDetailSerializer, SancaoUpdateSerializer,PresencaEstudoUpdateSerializer, EstudantePerfilSerializer, ChangePasswordSerializer, PedidoSaidaEncarregadoUpdateSerializer, EncarregadoProfileUpdateSerializer, PasswordResetRequestSerializer, SetNewPasswordSerializer, EncarregadoAdminSerializer, MensalidadeAdminListSerializer, QuartoSerializer
 from .permissions import (
     IsAdminUser, IsGestorOuSuporte, IsFinanceiroOuSuporte, 
@@ -23,6 +23,16 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from django.http import HttpResponse
+from .utils import gerar_numero_recibo 
+import io
+import pandas as pd
+from io import BytesIO
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -519,24 +529,28 @@ class AdminEncarregadoDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = EncarregadoAdminSerializer
     permission_classes = [IsAuthenticated, IsGestorOuSuporte]
 
+# views.py
 class AdminMensalidadeListView(generics.ListAPIView):
-    """
-    Endpoint: /api/v1/admin/financeiro/mensalidades/
-    Lista todas as mensalidades de todos os alunos.
-    Permite filtrar por estado e pesquisar por nome/número.
-    """
     queryset = Mensalidade.objects.all().order_by('-mes_referencia')
     serializer_class = MensalidadeAdminListSerializer
     permission_classes = [IsAuthenticated, IsFinanceiroOuSuporte]
     
-    # Ativa a pesquisa e os filtros exatos
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    
-    # Filtro exato no dropdown (Pendente, Pago, Atraso)
-    filterset_fields = ['estado']
-    
-    # Pesquisa de texto livre na barra de pesquisa
     search_fields = ['estudante__nome_completo', 'estudante__num_estudante']
+
+    # Custom filter for 'estado' that includes 'Atraso'
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        estado = self.request.query_params.get('estado', None)
+        if estado == 'Atraso':
+            hoje = timezone.now().date()
+            queryset = queryset.filter(
+                estado='Pendente',
+                data_vencimento__lt=hoje
+            )
+        elif estado:
+            queryset = queryset.filter(estado=estado)
+        return queryset
 
 class AdminSancaoListCreateView(generics.ListCreateAPIView):
     """ Lista todas as sanções e permite criar novas. """
@@ -589,6 +603,396 @@ class QuartoDetailView(generics.RetrieveUpdateDestroyAPIView):
     # O utilizador_id é a Primary Key do Encarregado
 # Ficheiro: backend/core/views.py
 # ... (Manter as views do Estudante) ...
+
+
+
+
+class GerarReciboView(APIView):
+    """
+    Endpoint para gerar e fazer download do recibo PDF de uma mensalidade.
+    A mensalidade deve estar com estado 'Pago'.
+    """
+    permission_classes = [IsAuthenticated]  # Só utilizadores autenticados (pode refinar)
+
+    def get(self, request, pk):
+        mensalidade = get_object_or_404(Mensalidade, pk=pk)
+
+        # Verificar se a mensalidade está paga
+        if mensalidade.estado != 'Pago':
+            return Response(
+                {"erro": "Recibo só pode ser gerado para mensalidades pagas."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Verificar se já existe recibo gerado (para não duplicar)
+        recibo, created = Recibo.objects.get_or_create(
+            mensalidade=mensalidade,
+            defaults={'numero_recibo': gerar_numero_recibo()}
+        )
+
+        # Gerar PDF
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="recibo_{recibo.numero_recibo}.pdf"'
+
+        # Criar o PDF com reportlab
+        doc = SimpleDocTemplate(response, pagesize=A4)
+        styles = getSampleStyleSheet()
+        estilo_titulo = ParagraphStyle(
+            'Titulo',
+            parent=styles['Heading1'],
+            alignment=1,  # centralizado
+            fontSize=16
+        )
+        estilo_normal = styles['Normal']
+
+        # Dados
+        estudante = mensalidade.estudante
+        encarregado = estudante.encarregado
+
+        conteudo = []
+
+        # Cabeçalho da instituição
+        conteudo.append(Paragraph("INSTITUTO INDUSTRIAL E COMERCIAL DA BEIRA", estilo_titulo))
+        conteudo.append(Paragraph("Internato", estilo_titulo))
+        conteudo.append(Spacer(1, 0.5*cm))
+
+        # Título do recibo
+        conteudo.append(Paragraph("RECIBO DE PAGAMENTO", estilo_titulo))
+        conteudo.append(Spacer(1, 0.5*cm))
+
+        # Dados do recibo
+        dados = [
+            ["Número do Recibo:", recibo.numero_recibo],
+            ["Data de Emissão:", recibo.data_emissao.strftime("%d/%m/%Y %H:%M")],
+            ["Mês de Referência:", mensalidade.mes_referencia.strftime("%B/%Y")],
+            ["Valor Pago:", f"{mensalidade.valor_pago:.2f} MZN"],
+            ["Método de Pagamento:", mensalidade.get_metodo_pagamento_display()],
+            ["Referência/Comprovativo:", mensalidade.referencia_comprovativo or "---"],
+        ]
+        tabela = Table(dados, colWidths=[5*cm, 8*cm])
+        tabela.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,0), (-1,-1), 10),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('BACKGROUND', (0,0), (0,-1), colors.lightgrey),
+        ]))
+        conteudo.append(tabela)
+        conteudo.append(Spacer(1, 0.5*cm))
+
+        # Dados do estudante
+        conteudo.append(Paragraph("Dados do Estudante", styles['Heading2']))
+        dados_estudante = [
+            ["Nome:", estudante.nome_completo],
+            ["Número de Estudante:", estudante.num_estudante],
+            ["Curso:", estudante.curso],
+            ["Quarto:", estudante.quarto.numero if estudante.quarto else "Não atribuído"],
+        ]
+        tabela_est = Table(dados_estudante, colWidths=[5*cm, 8*cm])
+        tabela_est.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,0), (-1,-1), 10),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('BACKGROUND', (0,0), (0,-1), colors.lightgrey),
+        ]))
+        conteudo.append(tabela_est)
+        conteudo.append(Spacer(1, 0.5*cm))
+
+        # Dados do encarregado (opcional)
+        conteudo.append(Paragraph("Encarregado de Educação", styles['Heading2']))
+        dados_enc = [
+            ["Nome:", encarregado.nome_completo],
+            ["Telefone:", encarregado.telefone_principal],
+            ["Email:", encarregado.email_contacto or "---"],
+        ]
+        tabela_enc = Table(dados_enc, colWidths=[5*cm, 8*cm])
+        tabela_enc.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,0), (-1,-1), 10),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('BACKGROUND', (0,0), (0,-1), colors.lightgrey),
+        ]))
+        conteudo.append(tabela_enc)
+        conteudo.append(Spacer(1, 1*cm))
+
+        # Assinaturas
+        conteudo.append(Paragraph("___________________________________", styles['Normal']))
+        conteudo.append(Paragraph("Assinatura do Responsável Financeiro", styles['Normal']))
+
+        # Construir PDF
+        doc.build(conteudo)
+
+        return response
+
+
+class AdminDashboardView(APIView):
+    """
+    Endpoint unificado de dashboard para utilizadores com perfil administrativo.
+    Retorna dados específicos conforme o perfil.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        perfil = user.perfil.nome_perfil if user.perfil else None
+
+        if perfil not in ['Gestor', 'Financeiro', 'Disciplinar', 'Suporte']:
+            return Response({"erro": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
+
+        response_data = {}
+
+        # ----- Dados administrativos (ocupação, pedidos, alunos) -----
+        def admin_data():
+            total_quartos = Quarto.objects.count()
+            total_vagas = Quarto.objects.aggregate(total=Sum('capacidade_maxima'))['total'] or 0
+            total_ocupadas = Quarto.objects.aggregate(total=Sum('ocupacao_atual'))['total'] or 0
+            total_estudantes_ativos = Estudante.objects.filter(estado='Activo').count()
+
+            # Pedidos de saída pendentes (não confundir com aprovação de encarregado)
+            pedidos_pendentes = PedidoSaida.objects.filter(estado='Pendente').count()
+
+            return {
+                'total_quartos': total_quartos,
+                'total_vagas': total_vagas,
+                'total_ocupadas': total_ocupadas,
+                'vagas_disponiveis': total_vagas - total_ocupadas,
+                'total_estudantes_ativos': total_estudantes_ativos,
+                'pedidos_saida_pendentes': pedidos_pendentes,
+            }
+
+        # ----- Dados financeiros -----
+        def finance_data():
+            hoje = timezone.now().date()
+            primeiro_dia_mes = hoje.replace(day=1)
+            mensalidades_mes = Mensalidade.objects.filter(mes_referencia=primeiro_dia_mes)
+
+            total_arrecadado = mensalidades_mes.filter(estado='Pago').aggregate(
+                total=Sum('valor_pago'))['total'] or 0
+
+            pendentes = mensalidades_mes.filter(estado='Pendente')
+            total_estudantes_pendentes = pendentes.count()
+            atrasados = pendentes.filter(data_vencimento__lt=hoje)
+            total_estudantes_atraso = atrasados.count()
+
+            return {
+                'total_arrecadado_mes': total_arrecadado,
+                'total_pendente_mes': 0,  # opcional
+                'total_estudantes_pendentes': total_estudantes_pendentes,
+                'total_estudantes_atraso': total_estudantes_atraso,
+                'mes_referencia': primeiro_dia_mes.isoformat()
+            }
+
+        # ----- Dados disciplinares -----
+        def discipline_data():
+            hoje = timezone.now().date()
+            primeiro_dia_mes = hoje.replace(day=1)
+
+            top_infratores = Sancao.objects.filter(
+                data_ocorrencia__gte=primeiro_dia_mes
+            ).values(
+                'estudante_id',
+                'estudante__nome_completo'
+            ).annotate(
+                total=Count('id')
+            ).order_by('-total')[:10]
+
+            top_ausentes = PresencaEstudo.objects.filter(
+                data_presenca__gte=primeiro_dia_mes,
+                estado__in=['Ausente', 'Justificado']
+            ).values(
+                'estudante_id',
+                'estudante__nome_completo'
+            ).annotate(
+                total=Count('id')
+            ).order_by('-total')[:10]
+
+            sancao_por_tipo = Sancao.objects.filter(
+                data_ocorrencia__gte=primeiro_dia_mes
+            ).values('tipo_sancao').annotate(
+                total=Count('id')
+            ).order_by('-total')
+
+            return {
+                'top_infratores': list(top_infratores),
+                'top_ausentes': list(top_ausentes),
+                'sancao_por_tipo': list(sancao_por_tipo)
+            }
+
+        # ----- Distribuição conforme perfil -----
+        if perfil == 'Gestor':
+            response_data['administrative'] = admin_data()
+
+        elif perfil == 'Financeiro':
+            response_data['finance'] = finance_data()
+
+        elif perfil == 'Disciplinar':
+            response_data['discipline'] = discipline_data()
+
+        elif perfil == 'Suporte':
+            response_data['administrative'] = admin_data()
+            response_data['finance'] = finance_data()
+            response_data['discipline'] = discipline_data()
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+class ExportarRelatorioView(APIView):
+    permission_classes = [IsAuthenticated, IsGestorOuSuporte, IsFinanceiroOuSuporte, IsDisciplinarOuSuporte]  # ajustar conforme permissões
+
+    def get(self, request):
+        tipo = request.query_params.get('tipo')  # 'financeiro', 'disciplinar', 'ocupacao', 'pedidos', 'completo'
+        formato = request.query_params.get('formato', 'xlsx')
+        inicio = request.query_params.get('periodo_inicio')
+        fim = request.query_params.get('periodo_fim')
+
+        if not tipo:
+            return Response({"erro": "Parâmetro 'tipo' é obrigatório."}, status=400)
+
+        # Mapeamento para funções de coleta de dados
+        handlers = {
+            'financeiro': self._get_dados_financeiros,
+            'disciplinar': self._get_dados_disciplinares,
+            'ocupacao': self._get_dados_ocupacao,
+            'pedidos': self._get_dados_pedidos,
+            'completo': self._get_dados_completos,
+        }
+
+        if tipo not in handlers:
+            return Response({"erro": "Tipo inválido."}, status=400)
+
+        dados = handlers[tipo](inicio, fim)
+
+        if formato == 'xlsx':
+            return self._gerar_excel(dados, tipo)
+        elif formato == 'pdf':
+            return self._gerar_pdf(dados, tipo)
+        else:
+            return Response({"erro": "Formato inválido. Use 'xlsx' ou 'pdf'."}, status=400)
+
+    def _get_dados_financeiros(self, inicio, fim):
+        queryset = Mensalidade.objects.all()
+        if inicio:
+            queryset = queryset.filter(mes_referencia__gte=inicio)
+        if fim:
+            queryset = queryset.filter(mes_referencia__lte=fim)
+        return pd.DataFrame(list(queryset.values(
+            'estudante__nome_completo', 'estudante__num_estudante',
+            'mes_referencia', 'valor_pago', 'estado', 'metodo_pagamento'
+        )))
+
+    def _get_dados_disciplinares(self, inicio, fim):
+        sancao_qs = Sancao.objects.all()
+        if inicio:
+            sancao_qs = sancao_qs.filter(data_ocorrencia__gte=inicio)
+        if fim:
+            sancao_qs = sancao_qs.filter(data_ocorrencia__lte=fim)
+        sancao_df = pd.DataFrame(list(sancao_qs.values(
+            'estudante__nome_completo', 'estudante__num_estudante',
+            'data_ocorrencia', 'tipo_sancao', 'descricao'
+        )))
+
+        presenca_qs = PresencaEstudo.objects.all()
+        if inicio:
+            presenca_qs = presenca_qs.filter(data_presenca__gte=inicio)
+        if fim:
+            presenca_qs = presenca_qs.filter(data_presenca__lte=fim)
+        presenca_df = pd.DataFrame(list(presenca_qs.values(
+            'estudante__nome_completo', 'estudante__num_estudante',
+            'data_presenca', 'estado'
+        )))
+        return {'sancoes': sancao_df, 'presencas': presenca_df}
+
+    def _get_dados_ocupacao(self, inicio, fim):
+        # ignorar datas para ocupação
+        quartos = Quarto.objects.all()
+        return pd.DataFrame(list(quartos.values(
+            'numero', 'bloco', 'capacidade_maxima', 'ocupacao_atual', 'genero_permitido', 'estado'
+        )))
+
+    def _get_dados_pedidos(self, inicio, fim):
+        qs = PedidoSaida.objects.all()
+        if inicio:
+            qs = qs.filter(data_submissao__gte=inicio)
+        if fim:
+            qs = qs.filter(data_submissao__lte=fim)
+        return pd.DataFrame(list(qs.values(
+            'estudante__nome_completo', 'estudante__num_estudante',
+            'data_submissao', 'data_saida_pretendida', 'data_retorno_pretendida',
+            'estado', 'motivo'
+        )))
+
+    def _get_dados_completos(self, inicio, fim):
+        return {
+            'financeiro': self._get_dados_financeiros(inicio, fim),
+            'disciplinar': self._get_dados_disciplinares(inicio, fim),
+            'pedidos': self._get_dados_pedidos(inicio, fim),
+        }
+
+    def _gerar_excel(self, dados, tipo):
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            if tipo == 'completo':
+                dados['financeiro'].to_excel(writer, sheet_name='Mensalidades', index=False)
+                dados['disciplinar']['sancoes'].to_excel(writer, sheet_name='Sanções', index=False)
+                dados['disciplinar']['presencas'].to_excel(writer, sheet_name='Presenças', index=False)
+                dados['pedidos'].to_excel(writer, sheet_name='Pedidos de Saída', index=False)
+            elif tipo == 'financeiro':
+                dados.to_excel(writer, sheet_name='Mensalidades', index=False)
+            elif tipo == 'disciplinar':
+                dados['sancoes'].to_excel(writer, sheet_name='Sanções', index=False)
+                dados['presencas'].to_excel(writer, sheet_name='Presenças', index=False)
+            elif tipo == 'ocupacao':
+                dados.to_excel(writer, sheet_name='Ocupação', index=False)
+            elif tipo == 'pedidos':
+                dados.to_excel(writer, sheet_name='Pedidos', index=False)
+        output.seek(0)
+        response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="relatorio_{tipo}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+        return response
+
+    def _gerar_pdf(self, dados, tipo):
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="relatorio_{tipo}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+        doc = SimpleDocTemplate(response, pagesize=A4)
+        styles = getSampleStyleSheet()
+        story = []
+
+        story.append(Paragraph(f"Relatório de {tipo.capitalize()}", styles['Title']))
+        story.append(Spacer(1, 0.5*cm))
+        story.append(Paragraph(f"Gerado em {timezone.now().strftime('%d/%m/%Y %H:%M')}", styles['Normal']))
+        story.append(Spacer(1, 1*cm))
+
+        def adicionar_tabela(titulo, df):
+            if df.empty:
+                story.append(Paragraph(f"{titulo}: Sem dados", styles['Normal']))
+                story.append(Spacer(1, 0.5*cm))
+                return
+            story.append(Paragraph(titulo, styles['Heading2']))
+            data = [df.columns.tolist()] + df.values.tolist()
+            t = Table(data)
+            t.setStyle(TableStyle([
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0,0), (-1,-1), 8),
+            ]))
+            story.append(t)
+            story.append(Spacer(1, 0.5*cm))
+
+        if tipo == 'completo':
+            adicionar_tabela("Mensalidades", dados['financeiro'])
+            adicionar_tabela("Sanções", dados['disciplinar']['sancoes'])
+            adicionar_tabela("Presenças", dados['disciplinar']['presencas'])
+            adicionar_tabela("Pedidos de Saída", dados['pedidos'])
+        elif tipo == 'financeiro':
+            adicionar_tabela("Mensalidades", dados)
+        elif tipo == 'disciplinar':
+            adicionar_tabela("Sanções", dados['sancoes'])
+            adicionar_tabela("Presenças", dados['presencas'])
+        elif tipo == 'ocupacao':
+            adicionar_tabela("Ocupação de Quartos", dados)
+        elif tipo == 'pedidos':
+            adicionar_tabela("Pedidos de Saída", dados)
+
+        doc.build(story)
+        return response
 
 # -----------------------------------------------------------------
 # --- ENDPOINTS DO PERFIL DE ENCARREGADO (CONSULTA) ---
@@ -774,63 +1178,39 @@ class EncarregadoProfileView(generics.RetrieveUpdateAPIView):
 # -----------------------------------------------------------------
 
 class FinanceiroSummaryView(APIView):
-    """
-    Endpoint para o Dashboard do Admin.
-    GET: Retorna um sumário financeiro do mês corrente.
-    """
     permission_classes = [IsAuthenticated, IsFinanceiroOuSuporte]
 
     def get(self, request, *args, **kwargs):
-        # 1. Obter o mês e ano actuais
         hoje = timezone.now().date()
         primeiro_dia_mes = hoje.replace(day=1)
-        
-        # 2. Filtrar todas as mensalidades deste mês
-        mensalidades_mes = Mensalidade.objects.filter(
-            mes_referencia=primeiro_dia_mes
-        )
 
-        # 3. Fazer os cálculos de agregação na BD
-        sumario = mensalidades_mes.aggregate(
-            # Soma o 'valor_pago' APENAS das que estão 'Pago'
-            total_arrecadado=Sum(
-                'valor_pago', 
-                filter=Q(estado='Pago')
-            ),
-            
-            # Conta quantos estudantes únicos têm estado 'Pendente'
-            total_pendentes=Count(
-                'estudante', 
-                distinct=True, 
-                filter=Q(estado='Pendente')
-            )
-        )
-        
-        # O 'total_pendente_mes' é mais complexo: 
-        # Precisamos do valor *esperado*, não do 'valor_pago' (que é 0)
-        # Assumindo que o valor é fixo. Por agora, vamos simplificar.
-        # Vamos calcular o valor pendente com base no 'valor_pago' (se foi pago parcialmente)
-        total_pendente_calculado = mensalidades_mes.filter(estado='Pendente').aggregate(
-             total_pendente_valor=Sum('valor_pago') # Isto está conceptualmente errado, mas serve para o exemplo
-        )['total_pendente_valor'] or 0
+        mensalidades_mes = Mensalidade.objects.filter(mes_referencia=primeiro_dia_mes)
 
-        # Vamos assumir que o "total pendente" é o número de estudantes * o valor da mensalidade
-        # Por agora, vamos retornar 0 para este campo complexo.
-        # TODO: A lógica de "valor pendente" precisa ser definida (ex: um campo 'valor_total' no modelo)
-        
+        # Arrecadado
+        total_arrecadado = mensalidades_mes.filter(estado='Pago').aggregate(
+            total=Sum('valor_pago')
+        )['total'] or 0
+
+        # Pendentes (inclui os que estão em atraso, mas contamos separadamente)
+        pendentes = mensalidades_mes.filter(estado='Pendente')
+        total_pendentes_valor = pendentes.aggregate(total=Sum('valor_pago'))['total'] or 0
+        total_estudantes_pendentes = pendentes.count()
+
+        # Atrasados: pendentes com vencimento < hoje
+        atrasados = pendentes.filter(data_vencimento__lt=hoje)
+        total_estudantes_atraso = atrasados.count()
+        # Se quiser o valor total em atraso, pode somar o valor_pago (que geralmente é 0, pois não foi pago)
+        # Mas aqui vamos retornar só o número de estudantes.
+
         data = {
-            'total_arrecadado_mes': sumario.get('total_arrecadado') or 0,
-            'total_pendente_mes': 0, # TODO: Implementar lógica de valor esperado
-            'total_estudantes_pendentes': sumario.get('total_pendentes') or 0,
+            'total_arrecadado_mes': total_arrecadado,
+            'total_pendente_mes': total_pendentes_valor,
+            'total_estudantes_pendentes': total_estudantes_pendentes,
+            'total_estudantes_atraso': total_estudantes_atraso,
             'mes_referencia': primeiro_dia_mes
         }
-        
-        # Validar os dados de saída
-        serializer = FinanceiroSummarySerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
+        serializer = FinanceiroSummarySerializer(data)
+        return Response(serializer.data)
 # Ficheiro: backend/core/views.py
 # ... (Manter a view FinanceiroSummaryView) ...
 

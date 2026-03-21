@@ -99,6 +99,9 @@ path('admin/estudantes/', views.EstudanteListView.as_view(), name='admin-student
 path('admin/estudantes/<int:pk>/', views.EstudanteDetailView.as_view(), name='admin-student-detail'),
 path('admin/encarregados/', views.AdminEncarregadoListView.as_view(), name='admin-encarregado-list'),
 path('admin/encarregados/<int:pk>/', views.AdminEncarregadoDetailView.as_view(), name='admin-encarregado-detail'),
+path('admin/mensalidades/<int:pk>/recibo/', views.GerarReciboView.as_view(), name='gerar-recibo'),
+path('admin/dashboard/', views.AdminDashboardView.as_view(), name='admin-dashboard'),
+path('admin/relatorios/exportar/', views.ExportarRelatorioView.as_view(), name='exportar-relatorio'),
 # -----------------------------------------------------------------
     # --- GESTÃO DE QUARTOS (NOVO MÓDULO) ---
     # -----------------------------------------------------------------

@@ -7,15 +7,17 @@ from django.utils.http import urlsafe_base64_decode
 from django.contrib.auth import get_user_model
 
 class UserSerializer(serializers.ModelSerializer):
-    """ Serializer para o nosso modelo Utilizador """
+    perfil_nome = serializers.SerializerMethodField()
     precisa_mudar_senha = serializers.SerializerMethodField()
+    
     class Meta:
         model = Utilizador
-        # Campos que queremos retornar na API
-        fields = ['id', 'email', 'first_name', 'last_name', 'perfil', 'precisa_mudar_senha']
-        # O 'perfil' vai mostrar o ID do perfil
+        fields = ['id', 'email', 'first_name', 'last_name', 'perfil', 'perfil_nome', 'precisa_mudar_senha']
+    
+    def get_perfil_nome(self, obj):
+        return obj.perfil.nome_perfil if obj.perfil else None
+    
     def get_precisa_mudar_senha(self, obj):
-        # Verifica se a senha atual é a padrão "mudar1234"
         return obj.check_password('mudar1234')
 
 class EncarregadoRegistoSerializer(serializers.Serializer):
@@ -259,13 +261,10 @@ class PedidoSaidaUpdateAdminSerializer(serializers.ModelSerializer):
 # --- ADICIONE ESTE NOVO SERIALIZER ---
 
 class FinanceiroSummarySerializer(serializers.Serializer):
-    """
-    Serializer para o nosso Dashboard de Relatório Financeiro.
-    Não é um ModelSerializer porque não mapeia para um modelo.
-    """
     total_arrecadado_mes = serializers.DecimalField(max_digits=12, decimal_places=2)
     total_pendente_mes = serializers.DecimalField(max_digits=12, decimal_places=2)
     total_estudantes_pendentes = serializers.IntegerField()
+    total_estudantes_atraso = serializers.IntegerField()   # NOVO
     mes_referencia = serializers.DateField()
 
 class TopInfratoresSerializer(serializers.Serializer):
@@ -520,6 +519,7 @@ class MensalidadeAdminListSerializer(serializers.ModelSerializer):
     # Puxa os dados do estudante através da Foreign Key
     nome_estudante = serializers.CharField(source='estudante.nome_completo', read_only=True)
     num_estudante = serializers.CharField(source='estudante.num_estudante', read_only=True)
+    estado_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Mensalidade
@@ -528,9 +528,18 @@ class MensalidadeAdminListSerializer(serializers.ModelSerializer):
             'nome_estudante', 
             'num_estudante', 
             'mes_referencia', 
-            'estado', 
+            'estado',
+            'estado_display', 
             'valor_pago'
         ]
+    def get_estado_display(self, obj):
+        if obj.estado == 'Pago':
+            return 'Pago'
+        # Verifica se está atrasado
+        hoje = timezone.now().date()
+        if obj.data_vencimento and obj.data_vencimento < hoje:
+            return 'Atraso'
+        return 'Pendente'
 
 
 class QuartoSerializer(serializers.ModelSerializer):

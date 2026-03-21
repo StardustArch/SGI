@@ -178,6 +178,15 @@ class Mensalidade(models.Model):
     
     ESTADO_CHOICES = [('Pendente', 'Pendente'), ('Pago', 'Pago')]
     estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='Pendente')
+    data_vencimento = models.DateField(null=True, blank=True, help_text="Data de vencimento da mensalidade")
+
+    def save(self, *args, **kwargs):
+        # Se não definido, calcular automaticamente a partir do mês de referência
+        if self.data_vencimento is None and self.mes_referencia:
+            # Define vencimento como o último dia do mês
+            ultimo_dia = calendar.monthrange(self.mes_referencia.year, self.mes_referencia.month)[1]
+            self.data_vencimento = self.mes_referencia.replace(day=ultimo_dia)
+        super().save(*args, **kwargs)
 
     class Meta:
         unique_together = ('estudante', 'mes_referencia') # Não permite 2 registos para o mesmo mês/estudante
@@ -238,3 +247,29 @@ class PedidoSaida(models.Model):
     data_aprovacao_encarregado = models.DateTimeField(null=True, blank=True)
     observacao_admin = models.TextField(null=True, blank=True)
 
+class Recibo(models.Model):
+    """ Registo de recibos gerados para pagamentos confirmados. """
+    mensalidade = models.OneToOneField(
+        Mensalidade,
+        on_delete=models.CASCADE,
+        related_name='recibo'
+    )
+    numero_recibo = models.CharField(max_length=50, unique=True)
+    data_emissao = models.DateTimeField(auto_now_add=True)
+    arquivo_pdf = models.FileField(upload_to='recibos/', blank=True, null=True)  # opcional
+
+    def __str__(self):
+        return f"Recibo {self.numero_recibo} - {self.mensalidade.estudante.nome_completo}"
+    def gerar_numero_recibo():
+        from .models import Recibo
+        ano = timezone.now().year
+        # Contar quantos recibos já foram gerados no ano
+        ultimo = Recibo.objects.filter(
+            numero_recibo__startswith=f"REC-{ano}-"
+        ).order_by('-numero_recibo').first()
+        if ultimo:
+            # Extrair o número final (ex: REC-2025-0001 -> 1)
+            num = int(ultimo.numero_recibo.split('-')[-1]) + 1
+        else:
+            num = 1
+        return f"REC-{ano}-{num:04d}"
