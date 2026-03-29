@@ -1,235 +1,333 @@
-# Ficheiro: backend/core/signals.py
+"""
+signals.py — SGI Internato IICB
 
-from django.core.mail import send_mail
-from django.db.models.signals import post_save
+Responsabilidades:
+  1. Manter ocupacao_atual do Quarto sempre consistente (via post_save/post_delete do Estudante)
+  2. Notificar encarregado quando há nova sanção
+  3. Confirmar pagamento ao encarregado quando mensalidade passa a 'Pago'
+  4. Notificar admin sobre novo pedido de saída
+  5. Notificar estudante sobre resposta ao pedido de saída
+
+Estratégia de notificação:
+  - Modo LOCAL_MODE=True (LAN sem internet): notificações só em log/consola
+  - Modo produção: tenta SMS via AfricasTalking; fallback para email se configurado
+  - Nunca lança excepção — falha silenciosa com log, para não bloquear operações críticas
+"""
+
+import logging
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.conf import settings
-from .models import Sancao, Mensalidade, PedidoSaida, Utilizador
+
+from .models import Estudante, Sancao, Mensalidade, PedidoSaida, Utilizador
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# HELPERS DE NOTIFICAÇÃO
+# ---------------------------------------------------------------------------
+
+
+def _enviar_sms(telefone: str, mensagem: str) -> bool:
+    """
+    Envia SMS via AfricasTalking (presença confirmada em Moçambique).
+    Retorna True se enviou, False se falhou ou não está configurado.
+    Instalar: pip install africastalking
+    """
+    at_username = getattr(settings, "AT_USERNAME", None)
+    at_api_key = getattr(settings, "AT_API_KEY", None)
+
+    if not at_username or not at_api_key:
+        logger.info(f"[SMS-SKIP] SMS não configurado. Mensagem: {mensagem[:60]}...")
+        return False
+
+    try:
+        import africastalking
+
+        africastalking.initialize(at_username, at_api_key)
+        sms = africastalking.SMS
+        response = sms.send(mensagem, [telefone])
+        logger.info(f"[SMS-OK] Enviado para {telefone}: {response}")
+        return True
+    except ImportError:
+        logger.warning(
+            "[SMS-SKIP] africastalking não instalado. pip install africastalking"
+        )
+        return False
+    except Exception as e:
+        logger.error(f"[SMS-ERRO] Falha ao enviar para {telefone}: {e}")
+        return False
+
+
+def _enviar_email(destinatario: str, assunto: str, corpo: str) -> bool:
+    """
+    Fallback de email. Só envia se o encarregado tiver email e
+    o backend não for console (produção real).
+    """
+    if not destinatario:
+        return False
+
+    # Em LOCAL_MODE, email vai para consola (útil para debug)
+    from django.core.mail import send_mail
+
+    try:
+        send_mail(
+            assunto,
+            corpo,
+            settings.DEFAULT_FROM_EMAIL,
+            [destinatario],
+            fail_silently=False,
+        )
+        logger.info(f"[EMAIL-OK] Enviado para {destinatario}")
+        return True
+    except Exception as e:
+        logger.error(f"[EMAIL-ERRO] Falha ao enviar para {destinatario}: {e}")
+        return False
+
+
+def _notificar_encarregado(
+    encarregado, assunto: str, mensagem_sms: str, corpo_email: str
+):
+    """
+    Tenta SMS primeiro (realista para Moçambique).
+    Se não tiver SMS configurado, tenta email como fallback.
+    """
+    telefone = getattr(encarregado, "telefone_principal", None)
+    email = getattr(encarregado, "email_contacto", None)
+
+    sms_enviado = _enviar_sms(telefone, mensagem_sms) if telefone else False
+
+    if not sms_enviado and email:
+        _enviar_email(email, assunto, corpo_email)
+
+
+# ---------------------------------------------------------------------------
+# SIGNAL 1 — Ocupação do Quarto (CRÍTICO para consistência de dados)
+# Resolve o bug onde ocupacao_atual só incrementava mas nunca decrementava.
+# ---------------------------------------------------------------------------
+
+
+@receiver(post_save, sender=Estudante)
+def actualizar_ocupacao_no_save(sender, instance, created, **kwargs):
+    """
+    Recalcula a ocupação do quarto sempre que um Estudante é guardado.
+    Cobre: criação, mudança de quarto, activação/desactivação.
+    """
+    # Recalcular quarto actual (se tiver)
+    if instance.quarto:
+        instance.quarto.recalcular_ocupacao()
+
+    # Se é uma actualização (não criação), pode ter mudado de quarto —
+    # precisamos de recalcular o quarto ANTERIOR também.
+    # Para isso guardamos o quarto anterior no __init__ do modelo.
+    quarto_anterior_id = getattr(instance, "_quarto_anterior_id", None)
+    if quarto_anterior_id and quarto_anterior_id != getattr(
+        instance.quarto, "pk", None
+    ):
+        from .models import Quarto
+
+        try:
+            quarto_anterior = Quarto.objects.get(pk=quarto_anterior_id)
+            quarto_anterior.recalcular_ocupacao()
+        except Quarto.DoesNotExist:
+            pass
+
+
+@receiver(post_delete, sender=Estudante)
+def actualizar_ocupacao_no_delete(sender, instance, **kwargs):
+    """Recalcula a ocupação quando um Estudante é removido."""
+    if instance.quarto:
+        instance.quarto.recalcular_ocupacao()
+
+
+# ---------------------------------------------------------------------------
+# SIGNAL 2 — Nova Sanção: notificar encarregado
+# ---------------------------------------------------------------------------
+
 
 @receiver(post_save, sender=Sancao)
-def enviar_notificacao_sancao(sender, instance, created, **kwargs):
+def notificar_sancao(sender, instance, created, **kwargs):
+    """Notifica o encarregado quando é criada uma nova sanção."""
+    if not created:
+        return
+
+    sancao = instance
+    estudante = sancao.estudante
+    encarregado = estudante.encarregado
+
+    logger.info(f"[SINAL] Nova sanção ID={sancao.id} para {estudante.nome_completo}")
+
+    assunto = f"[SGI-IICB] Ocorrência disciplinar — {estudante.nome_completo}"
+
+    mensagem_sms = (
+        f"IICB Internato: O seu educando {estudante.nome_completo} "
+        f"recebeu uma ocorrência disciplinar ({sancao.tipo_sancao}) "
+        f"em {sancao.data_ocorrencia}. Contacte a direcção para mais info."
+    )
+
+    corpo_email = f"""
+Exmo(a). Sr(a). {encarregado.nome_completo},
+
+Foi registada uma ocorrência disciplinar para o seu educando.
+
+Estudante: {estudante.nome_completo}
+Data: {sancao.data_ocorrencia}
+Tipo: {sancao.tipo_sancao}
+Descrição: {sancao.descricao}
+
+Para mais detalhes, contacte a direcção do Internato IICB.
+
+Com os melhores cumprimentos,
+Direcção do Internato — IICB
     """
-    Esta função é chamada automaticamente DEPOIS de uma 'Sancao' ser guardada.
-    """
 
-    # 'created' é True apenas na primeira vez que é guardada (criação).
-    # Não queremos enviar um email se o admin estiver apenas a *editar* uma sanção antiga.
-    if created:
-        print(f"--- SINAL DETECTADO: Nova sanção ID {instance.id} criada ---")
+    _notificar_encarregado(encarregado, assunto, mensagem_sms, corpo_email)
 
-        # Obter os objectos
-        sancao = instance
-        estudante = sancao.estudante
-        encarregado = estudante.encarregado
+    # Marcar como notificado para rastreabilidade
+    Sancao.objects.filter(pk=sancao.pk).update(notificado_encarregado=True)
 
-        # Preparar o email
-        subject = f"Notificação Disciplinar (SGI): {estudante.nome_completo}"
-        message_body = f"""
-        Exmo(a). Sr(a). {encarregado.nome_completo},
 
-        Informamos que foi registada uma nova ocorrência disciplinar
-        para o seu educando, {estudante.nome_completo}.
+# ---------------------------------------------------------------------------
+# SIGNAL 3 — Mensalidade paga: confirmar ao encarregado
+# ---------------------------------------------------------------------------
 
-        Detalhes da Ocorrência:
-        - Data: {sancao.data_ocorrencia}
-        - Tipo: {sancao.tipo_sancao}
-        - Descrição: {sancao.descricao}
-
-        Para mais detalhes, por favor aceda ao portal SGI.
-
-        Com os melhores cumprimentos,
-        A Direcção do Internato IICB
-        """
-
-        # Enviar o email
-        try:
-            send_mail(
-                subject,
-                message_body,
-                settings.DEFAULT_FROM_EMAIL,
-                [encarregado.email_contacto], # Lista de destinatários
-                fail_silently=False,
-            )
-            print(f"--- Email de notificação enviado para {encarregado.email_contacto} ---")
-        except Exception as e:
-            print(f"--- ERRO AO ENVIAR EMAIL: {str(e)} ---")
-
-# Ficheiro: backend/core/signals.py
-
-# ... (manter a função enviar_notificacao_sancao) ...
-
-# --- ADICIONE ESTA NOVA FUNÇÃO ---
 
 @receiver(post_save, sender=Mensalidade)
-def enviar_notificacao_pagamento(sender, instance, created, update_fields, **kwargs):
+def confirmar_pagamento(sender, instance, created, update_fields, **kwargs):
     """
-    Envia um email de confirmação (recibo) quando uma mensalidade é
-    actualizada (PATCH) para o estado 'Pago'.
+    Envia confirmação quando uma mensalidade passa para 'Pago'.
+    Só dispara em actualizações onde o campo 'estado' foi explicitamente alterado.
     """
-    
-    # 1. Não fazer nada na *criação* (só em actualizações)
     if created:
         return
 
-    # 2. Verificar se o 'estado' foi um dos campos actualizados
-    #    e se o novo estado é 'Pago'.
-    #    (Isto evita re-enviar emails se o admin só mudar o 'valor' de um
-    #     pagamento que já estava Pago)
-    if update_fields and 'estado' in update_fields and instance.estado == 'Pago':
-        
-        print(f"--- SINAL DETECTADO: Mensalidade ID {instance.id} foi Paga ---")
-        
+    # Só actua se 'estado' estiver nos campos actualizados E for 'Pago'
+    if update_fields and "estado" in update_fields and instance.estado == "Pago":
         mensalidade = instance
         estudante = mensalidade.estudante
         encarregado = estudante.encarregado
-        
-        # Preparar o email
-        subject = f"Confirmação de Pagamento (SGI): {estudante.nome_completo}"
-        message_body = f"""
-        Exmo(a). Sr(a). {encarregado.nome_completo},
-        
-        Confirmamos a recepção do pagamento da mensalidade
-        para o seu educando, {estudante.nome_completo}.
-        
-        Detalhes do Pagamento:
-        - Mês de Referência: {mensalidade.mes_referencia.strftime('%B de %Y')}
-        - Valor Pago: {mensalidade.valor_pago}
-        - Data da Confirmação: {mensalidade.data_pagamento_confirmado}
-        - Método: {mensalidade.metodo_pagamento}
-        
-        Obrigado,
-        A Direcção do Internato IICB
-        """
-        
-        # Enviar o email
-        try:
-            send_mail(
-                subject,
-                message_body,
-                settings.DEFAULT_FROM_EMAIL,
-                [encarregado.email_contacto],
-                fail_silently=False,
-            )
-            print(f"--- Email de recibo enviado para {encarregado.email_contacto} ---")
-        except Exception as e:
-            print(f"--- ERRO AO ENVIAR EMAIL DE RECIBO: {str(e)} ---")
 
+        logger.info(f"[SINAL] Mensalidade ID={mensalidade.id} marcada como Paga")
 
-# Ficheiro: backend/core/signals.py
-# ... (manter a função enviar_notificacao_pagamento) ...
+        assunto = f"[SGI-IICB] Pagamento confirmado — {estudante.nome_completo}"
 
-# --- OUVINTE 3: Novo Pedido de Saída ---
-
-@receiver(post_save, sender=PedidoSaida)
-def notificar_admin_novo_pedido_saida(sender, instance, created, **kwargs):
-    """
-    Envia um email ao(s) Admin(s) quando um novo pedido de
-    saída é submetido por um estudante.
-    """
-    
-    # Só dispara na *criação* de um novo pedido
-    if created:
-        print(f"--- SINAL DETECTADO: Novo Pedido de Saída ID {instance.id} criado ---")
-        
-        pedido = instance
-        estudante = pedido.estudante
-        
-        # Obter os emails de TODOS os admins
-        # (Isto assume que o seu superuser 'paulo@mail.com' tem o Perfil 'Administrador' atribuído)
-        admin_emails = list(
-            Utilizador.objects.filter(perfil__nome_perfil='Administrador')
-                            .values_list('email', flat=True)
+        mensagem_sms = (
+            f"IICB Internato: Pagamento de {mensalidade.valor_pago} MZN "
+            f"referente a {mensalidade.mes_referencia.strftime('%m/%Y')} "
+            f"de {estudante.nome_completo} confirmado. Obrigado."
         )
-        
-        if not admin_emails:
-            print("--- ERRO DE NOTIFICAÇÃO: Nenhum Admin encontrado para notificar. ---")
-            return
 
-        # Preparar o email
-        subject = f"Novo Pedido de Saída Pendente (SGI): {estudante.nome_completo}"
-        message_body = f"""
-        Um novo pedido de saída foi submetido e aguarda aprovação.
-        
-        Detalhes do Pedido:
-        - Estudante: {estudante.nome_completo} (ID: {estudante.pk})
-        - Data de Saída: {pedido.data_saida_pretendida}
-        - Data de Retorno: {pedido.data_retorno_pretendida}
-        - Motivo: {pedido.motivo}
-        
-        Por favor, aceda ao painel de administração para aprovar ou rejeitar.
+        corpo_email = f"""
+Exmo(a). Sr(a). {encarregado.nome_completo},
+
+Confirmamos a recepção do pagamento do seu educando.
+
+Estudante: {estudante.nome_completo}
+Mês: {mensalidade.mes_referencia.strftime('%B de %Y')}
+Valor Pago: {mensalidade.valor_pago} MZN
+Data de Confirmação: {mensalidade.data_pagamento_confirmado}
+Método: {mensalidade.metodo_pagamento}
+Referência: {mensalidade.referencia_comprovativo or 'N/A'}
+
+Com os melhores cumprimentos,
+Direcção do Internato — IICB
         """
-        
-        try:
-            send_mail(
-                subject,
-                message_body,
-                settings.DEFAULT_FROM_EMAIL,
-                admin_emails, # Envia para todos os admins
-                fail_silently=False,
-            )
-            print(f"--- Email de Pedido Pendente enviado para: {', '.join(admin_emails)} ---")
-        except Exception as e:
-            print(f"--- ERRO AO ENVIAR EMAIL DE PEDIDO PENDENTE: {str(e)} ---")
+
+        _notificar_encarregado(encarregado, assunto, mensagem_sms, corpo_email)
 
 
-# Ficheiro: backend/core/signals.py
-# ... (manter a função notificar_admin_novo_pedido_saida) ...
+# ---------------------------------------------------------------------------
+# SIGNAL 4 — Novo pedido de saída: notificar admins
+# ---------------------------------------------------------------------------
 
-# --- OUVINTE 4: Resposta ao Pedido de Saída ---
 
 @receiver(post_save, sender=PedidoSaida)
-def notificar_estudante_resposta_pedido(sender, instance, created, update_fields, **kwargs):
+def notificar_admins_novo_pedido(sender, instance, created, **kwargs):
+    """Notifica todos os Gestores quando há um novo pedido de saída."""
+    if not created:
+        return
+
+    pedido = instance
+    estudante = pedido.estudante
+
+    logger.info(
+        f"[SINAL] Novo pedido de saída ID={pedido.id} de {estudante.nome_completo}"
+    )
+
+    # Notificar todos os admins com email cadastrado
+    admin_emails = list(
+        Utilizador.objects.filter(perfil__nome_perfil__in=["Gestor", "Suporte"])
+        .exclude(email="")
+        .values_list("email", flat=True)
+    )
+
+    if not admin_emails:
+        logger.warning("[SINAL] Nenhum Gestor/Suporte com email para notificar.")
+        return
+
+    assunto = f"[SGI-IICB] Novo pedido de saída — {estudante.nome_completo}"
+    corpo = f"""
+Novo pedido de saída submetido e a aguardar aprovação.
+
+Estudante: {estudante.nome_completo}
+Saída pretendida: {pedido.data_saida_pretendida}
+Retorno pretendido: {pedido.data_retorno_pretendida}
+Motivo: {pedido.motivo}
+
+Aceda ao painel de administração para aprovar ou rejeitar.
     """
-    Envia um email ao Estudante quando o seu pedido de saída
-    é Aprovado ou Rejeitado pelo Admin.
+
+    for email in admin_emails:
+        _enviar_email(email, assunto, corpo)
+
+
+# ---------------------------------------------------------------------------
+# SIGNAL 5 — Resposta do admin ao pedido: notificar estudante
+# ---------------------------------------------------------------------------
+
+
+@receiver(post_save, sender=PedidoSaida)
+def notificar_estudante_resposta(sender, instance, created, update_fields, **kwargs):
     """
-    
-    # 1. Não fazer nada na *criação*
+    Notifica o estudante quando o admin responde ao pedido.
+    Dispara quando estado muda para 'Aguardando_Encarregado' ou 'Rejeitado'.
+    """
     if created:
         return
 
-    # 2. Só disparar se o 'estado' foi actualizado
-    if update_fields and 'estado' in update_fields:
-        
-        # 3. Verificar se o novo estado é um estado final
-        if instance.estado in ['Aprovado_Admin', 'Rejeitado']:
-            
-            print(f"--- SINAL DETECTADO: Pedido ID {instance.id} foi respondido ---")
-            
-            pedido = instance
-            estudante = pedido.estudante
-            
-            # Formatar o estado para ser legível (ex: "Aprovado_Admin" -> "Aprovado")
-            estado_legivel = "Aprovado" if instance.estado == 'Aprovado_Admin' else "Rejeitado"
+    if not (update_fields and "estado" in update_fields):
+        return
 
-            # Preparar o email
-            subject = f"Resposta ao seu Pedido de Saída (SGI): {estado_legivel}"
-            message_body = f"""
-            Olá {estudante.nome_completo},
-            
-            O seu pedido de saída (ID {pedido.id}) foi respondido pela administração.
-            
-            Detalhes do Pedido:
-            - Data de Saída: {pedido.data_saida_pretendida}
-            - Data de Retorno: {pedido.data_retorno_pretendida}
-            - Motivo: {pedido.motivo}
-            
-            Resultado:
-            - Novo Estado: {estado_legivel}
-            - Observação do Admin: {pedido.observacao_admin or "N/A"}
-            
-            Com os melhores cumprimentos,
-            A Direcção do Internato IICB
-            """
-            
-            try:
-                send_mail(
-                    subject,
-                    message_body,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [estudante.utilizador.email], # Envia para o email de login do estudante
-                    fail_silently=False,
-                )
-                print(f"--- Email de Resposta de Pedido enviado para: {estudante.utilizador.email} ---")
-            except Exception as e:
-                print(f"--- ERRO AO ENVIAR EMAIL DE RESPOSTA DE PEDIDO: {str(e)} ---")
+    if instance.estado not in ["Aguardando_Encarregado", "Rejeitado"]:
+        return
+
+    pedido = instance
+    estudante = pedido.estudante
+    email_estudante = estudante.utilizador.email
+
+    if instance.estado == "Aguardando_Encarregado":
+        resultado = "aprovado pela administração e aguarda confirmação do encarregado"
+    else:
+        resultado = "rejeitado pela administração"
+
+    assunto = (
+        f"[SGI-IICB] Pedido de saída {instance.estado} — {estudante.nome_completo}"
+    )
+    corpo = f"""
+Olá {estudante.nome_completo},
+
+O seu pedido de saída (ID {pedido.id}) foi {resultado}.
+
+Saída pretendida: {pedido.data_saida_pretendida}
+Retorno pretendido: {pedido.data_retorno_pretendida}
+Observação da administração: {pedido.observacao_admin or 'N/A'}
+
+Com os melhores cumprimentos,
+Direcção do Internato — IICB
+    """
+
+    _enviar_email(email_estudante, assunto, corpo)
+    logger.info(
+        f"[SINAL] Estudante {estudante.nome_completo} notificado — estado: {instance.estado}"
+    )

@@ -1,0 +1,50 @@
+[
+  {
+    "model": "core.perfil",
+    "pk": 1,
+    "fields": {
+      "nome_perfil": "Gestor",
+      "descricao": "Gestor do Internato — acesso total ao sistema."
+    }
+  },
+  {
+    "model": "core.perfil",
+    "pk": 2,
+    "fields": {
+      "nome_perfil": "Financeiro",
+      "descricao": "Administrador Financeiro — gere mensalidades e recibos."
+    }
+  },
+  {
+    "model": "core.perfil",
+    "pk": 3,
+    "fields": {
+      "nome_perfil": "Disciplinar",
+      "descricao": "Responsável Disciplinar — gere sanções e presenças."
+    }
+  },
+  {
+    "model": "core.perfil",
+    "pk": 4,
+    "fields": {
+      "nome_perfil": "Suporte",
+      "descricao": "Suporte Técnico — acesso a todos os módulos para manutenção."
+    }
+  },
+  {
+    "model": "core.perfil",
+    "pk": 5,
+    "fields": {
+      "nome_perfil": "Estudante",
+      "descricao": "Estudante do internato — acesso ao seu próprio perfil."
+    }
+  },
+  {
+    "model": "core.perfil",
+    "pk": 6,
+    "fields": {
+      "nome_perfil": "Encarregado",
+      "descricao": "Encarregado de Educação — acompanha o seu educando."
+    }
+  }
+]
