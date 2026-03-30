@@ -38,7 +38,7 @@ from .serializers import (
     ChangePasswordSerializer,
     PasswordResetRequestSerializer, SetNewPasswordSerializer,
     GerarMensalidadesLoteSerializer,
-    TransferirQuartoSerializer,
+    TransferirQuartoSerializer,CustomTokenObtainPairSerializer
 )
 from .permissions import (
     IsAdminUser, IsAnyAdminUser,
@@ -68,6 +68,7 @@ from .utils import gerar_numero_recibo
 import io
 import pandas as pd
 from io import BytesIO
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 
 # ---------------------------------------------------------------------------
@@ -79,6 +80,8 @@ class StandardResultsSetPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
 # ---------------------------------------------------------------------------
 # UTILIZADOR / AUTH
@@ -171,12 +174,11 @@ class PasswordResetConfirmView(APIView):
 # ---------------------------------------------------------------------------
 # REGISTO COMPLETO (Admin cria Encarregado + Estudante de uma vez)
 # ---------------------------------------------------------------------------
+# views.py - RegistoCompletoView
+
+# core/views.py
 
 class RegistoCompletoView(generics.CreateAPIView):
-    """
-    Endpoint para o Admin registar um Encarregado e Estudante
-    numa transacção atómica com alocação de quarto.
-    """
     serializer_class = RegistoCompletoSerializer
     permission_classes = [IsAuthenticated, IsGestorOuSuporte]
 
@@ -185,74 +187,98 @@ class RegistoCompletoView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
 
         dados = serializer.validated_data
-        dados_enc = dados['encarregado']
         dados_est = dados['estudante']
+        dados_enc = dados.get('encarregado')
+        criar_usuario = dados.get('criar_usuario_encarregado', False)
 
         User = get_user_model()
         SENHA_PADRAO = "mudar1234"
 
         try:
-            perfil_enc = Perfil.objects.get(nome_perfil='Encarregado')
             perfil_est = Perfil.objects.get(nome_perfil='Estudante')
+            encarregado_obj = None
 
             with transaction.atomic():
                 quarto = dados_est['quarto']
-
                 if dados_est['genero'] != quarto.genero_permitido:
                     return Response(
-                        {"erro": "O género do estudante não é compatível com o quarto seleccionado."},
+                        {"erro": "Género não compatível com o quarto."},
                         status=status.HTTP_400_BAD_REQUEST
                     )
-
                 if quarto.vagas_disponiveis <= 0:
                     return Response(
-                        {"erro": "Este quarto já atingiu a capacidade máxima."},
+                        {"erro": "Quarto sem vagas."},
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
-                user_enc = User.objects.create_user(
-                    email=dados_enc['email'],
-                    password=SENHA_PADRAO,
-                    first_name=dados_enc['nome_completo'],
-                    perfil=perfil_enc,
-                )
-                encarregado = Encarregado.objects.create(
-                    utilizador=user_enc,
-                    nome_completo=dados_enc['nome_completo'],
-                    telefone_principal=dados_enc['telefone_principal'],
-                    email_contacto=dados_enc['email'],
+                # Cria encarregado (sempre)
+                encarregado_obj = Encarregado.objects.create(
+                    nome_completo=dados_enc.get('nome_completo', ''),
+                    telefone_principal=dados_enc.get('telefone_principal', ''),
+                    email=dados_enc.get('email', ''),
+                    parentesco=dados_enc.get('parentesco', None),
+                    telefone_alternativo=dados_enc.get('telefone_alternativo', None),
+                    bi=dados_enc.get('bi', None),
+                    morada=dados_enc.get('morada', None)
                 )
 
+                # Cria utilizador para o encarregado se solicitado e telefone fornecido
+                if criar_usuario and dados_enc.get('telefone_principal'):
+                    perfil_enc = Perfil.objects.get(nome_perfil='Encarregado')
+                    user_enc = User.objects.create_user(
+                        email=dados_enc.get('email', ''),
+                        password=SENHA_PADRAO,
+                        first_name=dados_enc['nome_completo'],
+                        perfil=perfil_enc,
+                        telefone=dados_enc['telefone_principal']   # <-- telefone como identificador
+                    )
+                    encarregado_obj.utilizador = user_enc
+                    encarregado_obj.save(update_fields=['utilizador'])
+
+                # Gera email para o estudante se não fornecido (opcional)
+                email_estudante = dados_est.get('email', '')
+                if not email_estudante:
+                    import time
+                    email_estudante = f"aluno_{int(time.time())}_{dados_est['nome_completo'].replace(' ', '_')}@internato.local"
+
+                # Cria o utilizador do estudante (código gerado automaticamente)
                 user_est = User.objects.create_user(
-                    email=dados_est['email'],
+                    email=email_estudante,
                     password=SENHA_PADRAO,
                     first_name=dados_est['nome_completo'],
                     perfil=perfil_est,
+                    # não passamos telefone nem código – o manager gera código
                 )
+
                 estudante = Estudante.objects.create(
                     utilizador=user_est,
-                    encarregado=encarregado,
+                    encarregado=encarregado_obj,
                     nome_completo=dados_est['nome_completo'],
                     genero=dados_est['genero'],
                     quarto=quarto,
                     curso=dados_est['curso'],
+                    data_nascimento=dados_est.get('data_nascimento', None),
+                    bi=dados_est.get('bi', None),
+                    telefone_pessoal=dados_est.get('telefone_pessoal', None),
+                    email_pessoal=dados_est.get('email_pessoal', None),
+                    morada=dados_est.get('morada', None),
+                    nome_mae=dados_est.get('nome_mae', None),
+                    nome_pai=dados_est.get('nome_pai', None)
                 )
-                # A ocupação do quarto é actualizada pelo Signal post_save do Estudante
 
-            return Response(
-                {"status": "sucesso", "estudante_id": estudante.utilizador_id},
-                status=status.HTTP_201_CREATED
-            )
+            return Response({
+                "status": "sucesso",
+                "estudante_id": estudante.utilizador_id,
+                "codigo_acesso": user_est.codigo_acesso,   # <-- retorna o código gerado
+            }, status=status.HTTP_201_CREATED)
 
         except Perfil.DoesNotExist:
             return Response(
-                {"erro": "Perfis 'Encarregado' ou 'Estudante' não encontrados na base de dados."},
+                {"erro": "Perfil 'Estudante' ou 'Encarregado' não encontrado."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         except Exception as e:
             return Response({"erro": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
 # ---------------------------------------------------------------------------
 # ESTUDANTES
 # ---------------------------------------------------------------------------
@@ -616,7 +642,12 @@ class PresencaEstudoDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_serializer_class(self):
         return PresencaEstudoUpdateSerializer if self.request.method == 'PATCH' else PresencaEstudoSerializer
 
-
+class PresencaListView(generics.ListAPIView):
+    queryset = PresencaEstudo.objects.all()
+    serializer_class = PresencaEstudoSerializer
+    permission_classes = [IsAuthenticated, IsDisciplinarOuSuporte]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['data_presenca', 'estudante']
 # ---------------------------------------------------------------------------
 # QUARTOS
 # ---------------------------------------------------------------------------

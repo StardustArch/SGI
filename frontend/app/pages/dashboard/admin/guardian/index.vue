@@ -84,18 +84,24 @@ const { api } = useApi()
 const searchQuery = ref('')
 
 // Buscar a lista de encarregados
-const { data: encarregados, pending } = await useAsyncData('admin-encarregados', () => api<any[]>('/admin/encarregados/'))
+const { data: encarregadosData, pending } = await useAsyncData('admin-encarregados', () => api<any>('/admin/encarregados/'))
 
+const encarregados = computed(() => {
+  if (!encarregadosData.value) return []
+  return encarregadosData.value.results ?? encarregadosData.value
+})
 // Filtragem local baseada na pesquisa
 const encarregadosFiltrados = computed(() => {
   if (!encarregados.value) return []
   const query = searchQuery.value.toLowerCase()
   if (!query) return encarregados.value
   
-  return encarregados.value.filter(e => 
+  return encarregados.value.filter((e: { nome_completo: string; telefone_principal: string | string[]; email_contacto: string }) => 
     e.nome_completo.toLowerCase().includes(query) || 
     e.telefone_principal.includes(query) ||
     (e.email_contacto && e.email_contacto.toLowerCase().includes(query))
   )
 })
+
+
 </script>

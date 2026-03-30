@@ -99,13 +99,13 @@ const form = reactive({
 const { data: encarregado, pending } = await useAsyncData('admin-encarregado-detail', 
   () => api<any>(`/admin/encarregados/${route.params.id}/`)
 )
-
+    console.log(encarregado.value)
 // Preencher formulário
 watch(encarregado, (val) => {
   if (val) {
     form.nome_completo = val.nome_completo
     form.telefone_principal = val.telefone_principal
-    form.email_contacto = val.email_contacto || ''
+    form.email_contacto = val.email || ''   // usando val.email
   }
 }, { immediate: true })
 
@@ -114,7 +114,11 @@ async function handleUpdate() {
   try {
     await api(`/admin/encarregados/${route.params.id}/`, {
       method: 'PATCH',
-      body: form
+      body: {
+        nome_completo: form.nome_completo,
+        telefone_principal: form.telefone_principal,
+        email: form.email_contacto   // mapear para o campo email do modelo
+      }
     })
     alert("Dados do encarregado atualizados com sucesso!")
   } catch (e: any) {

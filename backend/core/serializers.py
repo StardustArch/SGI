@@ -19,11 +19,32 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
+
 
 
 # ---------------------------------------------------------------------------
 # UTILIZADOR
 # ---------------------------------------------------------------------------
+
+class CustomTokenObtainPairSerializer(serializers.Serializer):
+    email = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+        request = self.context.get('request')
+        user = authenticate(request=request, username=email, password=password)
+        if user is None:
+            raise serializers.ValidationError('Credenciais inválidas')
+        refresh = RefreshToken.for_user(user)
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
 
 class UserSerializer(serializers.ModelSerializer):
     perfil_nome = serializers.SerializerMethodField()
@@ -91,23 +112,35 @@ class SetNewPasswordSerializer(serializers.Serializer):
 # ---------------------------------------------------------------------------
 
 class EncarregadoRegistoSerializer(serializers.Serializer):
-    email = serializers.EmailField()
     nome_completo = serializers.CharField(max_length=255)
     telefone_principal = serializers.CharField(max_length=20)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    parentesco = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    telefone_alternativo = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    bi = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    morada = serializers.CharField(required=False, allow_blank=True)
 
 
 class EstudanteRegistoSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    email = serializers.EmailField(required=False, allow_blank=True)  # opcional
     nome_completo = serializers.CharField(max_length=255)
     curso = serializers.CharField(max_length=100)
     genero = serializers.ChoiceField(choices=[('M', 'Masculino'), ('F', 'Feminino')])
     quarto = serializers.PrimaryKeyRelatedField(queryset=Quarto.objects.all())
+    # novos campos
+    data_nascimento = serializers.DateField(required=False, allow_null=True)
+    bi = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    telefone_pessoal = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    email_pessoal = serializers.EmailField(required=False, allow_blank=True)
+    morada = serializers.CharField(required=False, allow_blank=True)
+    nome_mae = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    nome_pai = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
 
 class RegistoCompletoSerializer(serializers.Serializer):
     encarregado = EncarregadoRegistoSerializer()
     estudante = EstudanteRegistoSerializer()
-
+    criar_usuario_encarregado = serializers.BooleanField(default=False, required=False)
 
 # ---------------------------------------------------------------------------
 # ESTUDANTE
@@ -116,27 +149,38 @@ class RegistoCompletoSerializer(serializers.Serializer):
 class EstudanteListSerializer(serializers.ModelSerializer):
     encarregado_nome = serializers.CharField(source='encarregado.nome_completo', read_only=True)
     quarto_numero = serializers.CharField(source='quarto.numero', read_only=True, default='—')
+    bi = serializers.CharField(read_only=True)
+    telefone_pessoal = serializers.CharField(read_only=True)
 
     class Meta:
         model = Estudante
         fields = [
-            'utilizador_id', 'nome_completo',
-            'quarto', 'quarto_numero', 'curso', 'estado', 'genero', 'encarregado_nome',
+            'utilizador_id', 'nome_completo', 'quarto', 'quarto_numero',
+            'curso', 'estado', 'genero', 'encarregado_nome',
+            'bi', 'telefone_pessoal'
         ]
-
-
+class EncarregadoDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Encarregado
+        fields = [
+            'id', 'nome_completo', 'parentesco', 'telefone_principal',
+            'telefone_alternativo', 'email', 'bi', 'morada'
+        ]
 class EstudanteDetailSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(source='utilizador.email', read_only=True)
+    email = serializers.EmailField(source='utilizador.codigo_acesso', read_only=True)
     encarregado_nome = serializers.CharField(source='encarregado.nome_completo', read_only=True)
+    quarto_numero = serializers.CharField(source='quarto.numero', read_only=True)
+    encarregado = EncarregadoDetailSerializer(read_only=True)  # aninhado
 
     class Meta:
         model = Estudante
         fields = [
-            'utilizador', 'email', 'nome_completo',
-            'genero', 'quarto', 'curso', 'estado', 'encarregado', 'encarregado_nome',
+            'utilizador', 'email', 'nome_completo', 'genero', 'quarto', 'quarto_numero',
+            'curso', 'estado', 'encarregado', 'encarregado_nome',
+            'data_nascimento', 'bi', 'telefone_pessoal', 'email_pessoal',
+            'morada', 'nome_mae', 'nome_pai'
         ]
-        read_only_fields = ['utilizador', 'email', 'encarregado', 'encarregado_nome']
-
+        read_only_fields = ['utilizador', 'email', 'encarregado_nome', 'quarto_numero', 'encarregado']
 
 class EstudantePerfilSerializer(serializers.ModelSerializer):
     """Perfil do próprio estudante autenticado — só leitura."""
@@ -339,12 +383,12 @@ class PedidoSaidaEncarregadoUpdateSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 
 class EncarregadoAdminSerializer(serializers.ModelSerializer):
-    educandos = serializers.StringRelatedField(many=True, source='estudante_set', read_only=True)
+    educandos = serializers.StringRelatedField(many=True, source='estudantes', read_only=True)
+    email_contacto = serializers.EmailField(source='email', read_only=True)
 
     class Meta:
         model = Encarregado
         fields = ['utilizador_id', 'nome_completo', 'telefone_principal', 'email_contacto', 'educandos']
-
 
 class EncarregadoProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:

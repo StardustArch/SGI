@@ -1,15 +1,17 @@
 <template>
   <div class="p-6 space-y-6 dark:text-white">
+    <!-- Cabeçalho -->
     <div class="flex justify-between items-center">
       <div>
         <h1 class="text-3xl font-bold">Gestão de Quartos</h1>
         <p class="text-gray-500">Administração de blocos, vagas e ocupação física.</p>
       </div>
-      <button @click="openModal()" class="btn-primary">
-        + Novo Quarto
+      <button @click="openModal()" class="btn-primary flex items-center gap-2">
+        <BootstrapIcon name="plus-lg" /> Novo Quarto
       </button>
     </div>
 
+    <!-- Filtros -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
       <input v-model="filters.search" type="text" placeholder="Pesquisar número ou bloco..." class="input" @input="fetchQuartos" />
       <select v-model="filters.genero" class="input" @change="fetchQuartos">
@@ -21,9 +23,11 @@
         <option value="">Todos os Estados</option>
         <option value="Activo">Activo</option>
         <option value="Manutenção">Manutenção</option>
+        <option value="Inactivo">Inactivo</option>
       </select>
     </div>
 
+    <!-- Tabela de quartos -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
       <table class="w-full text-left border-collapse">
         <thead class="bg-gray-50 dark:bg-gray-700">
@@ -44,14 +48,14 @@
             </td>
             <td class="p-4">
               <span :class="quarto.genero_permitido === 'M' ? 'text-blue-500' : 'text-pink-500'">
-                {{ quarto.genero_permitido === 'M' ? '♂ Masc' : '♀ Fem' }}
+                {{ quarto.genero_permitido === 'M' ? '♂ Masculino' : '♀ Feminino' }}
               </span>
             </td>
             <td class="p-4">{{ quarto.capacidade_maxima }} camas</td>
             <td class="p-4">
               <div class="flex items-center gap-2">
                 <div class="w-16 bg-gray-200 rounded-full h-2">
-                  <div class="bg-blue-600 h-2 rounded-full" :style="{ width: (quarto.ocupacao_atual / quarto.capacidade_maxima * 100) + '%' }"></div>
+                  <div class="bg-blue-600 h-2 rounded-full" :style="{ width: ocupacaoPercent(quarto) + '%' }"></div>
                 </div>
                 <span class="text-sm">{{ quarto.ocupacao_atual }}/{{ quarto.capacidade_maxima }}</span>
               </div>
@@ -66,31 +70,37 @@
               <button @click="confirmDelete(quarto)" class="text-red-600 hover:text-red-800">Apagar</button>
             </td>
           </tr>
+          <tr v-if="quartos.length === 0 && !loading">
+            <td colspan="6" class="p-8 text-center text-gray-500">Nenhum quarto encontrado.</td>
+          </tr>
         </tbody>
       </table>
+      <div v-if="loading" class="p-8 text-center text-gray-500">Carregando...</div>
     </div>
 
+    <!-- Modal de criação/edição -->
+     <ClientOnly>
     <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
         <h2 class="text-xl font-bold mb-4">{{ editingId ? 'Editar Quarto' : 'Novo Quarto' }}</h2>
         <form @submit.prevent="saveQuarto" class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="label text-xs">Número</label>
+              <label class="label text-xs">Número *</label>
               <input v-model="roomForm.numero" type="text" class="input" required />
             </div>
             <div>
-              <label class="label text-xs">Bloco</label>
+              <label class="label text-xs">Bloco *</label>
               <input v-model="roomForm.bloco" type="text" class="input" required />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="label text-xs">Capacidade Max</label>
-              <input v-model.number="roomForm.capacidade_maxima" type="number" class="input" required />
+              <label class="label text-xs">Capacidade Máxima *</label>
+              <input v-model.number="roomForm.capacidade_maxima" type="number" min="1" class="input" required />
             </div>
             <div>
-              <label class="label text-xs">Género</label>
+              <label class="label text-xs">Género *</label>
               <select v-model="roomForm.genero_permitido" class="input" required>
                 <option value="M">Masculino</option>
                 <option value="F">Feminino</option>
@@ -106,107 +116,164 @@
             </select>
           </div>
           <div class="flex justify-end gap-3 mt-6">
-            <button type="button" @click="showModal = false" class="px-4 py-2 text-gray-500">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="pending">
-              {{ pending ? 'A guardar...' : 'Guardar Alterações' }}
+            <button type="button" @click="closeModal" class="px-4 py-2 text-gray-500">Cancelar</button>
+            <button type="submit" class="btn-primary" :disabled="saving">
+              {{ saving ? 'A guardar...' : 'Guardar Alterações' }}
             </button>
           </div>
         </form>
       </div>
     </div>
+    </ClientOnly>
   </div>
 </template>
 
 <script setup lang="ts">
-// 1. Definimos a interface com campos opcionais onde faz sentido (?)
 interface Quarto {
   id?: number
   numero: string
   bloco: string
   capacidade_maxima: number
-  ocupacao_atual: number // Obrigatório conforme o erro 2322
+  ocupacao_atual: number
   genero_permitido: 'M' | 'F'
   estado: 'Activo' | 'Manutenção' | 'Inactivo'
 }
 
 const { api } = useApi()
-const quartos = ref<Quarto[]>([]) 
-const pending = ref(false)
+const quartos = ref<Quarto[]>([])
+const loading = ref(false)
+const saving = ref(false)
 const showModal = ref(false)
 const editingId = ref<number | null>(null)
 
-const filters = ref({ search: '', genero: '', estado: '' })
+// Estado dos filtros
+const filters = reactive({
+  search: '',
+  genero: '',
+  estado: ''
+})
 
-// Função auxiliar para criar um objeto Quarto vazio e válido
-const createEmptyRoom = (): Quarto => ({
+// Formulário do quarto
+const roomForm = ref<Quarto>({
   numero: '',
   bloco: '',
   capacidade_maxima: 4,
-  ocupacao_atual: 0, // Adicionado para satisfazer a interface
+  ocupacao_atual: 0,
   genero_permitido: 'M',
   estado: 'Activo'
 })
 
-const roomForm = ref<Quarto>(createEmptyRoom())
-
+// Carregar lista de quartos com filtros
 async function fetchQuartos() {
-  const params = new URLSearchParams()
-  if (filters.value.genero) params.append('genero_permitido', filters.value.genero)
-  if (filters.value.estado) params.append('estado', filters.value.estado)
-  if (filters.value.search) params.append('search', filters.value.search)
-  
-  // Tipamos o retorno da API
-  const data = await api<Quarto[]>(`/admin/quartos/?${params.toString()}`)
-  quartos.value = data
+  loading.value = true
+  try {
+    const params = new URLSearchParams()
+    if (filters.genero) params.append('genero_permitido', filters.genero)
+    if (filters.estado) params.append('estado', filters.estado)
+    if (filters.search) params.append('search', filters.search)
+    const response = await api<any>(`/admin/quartos/?${params.toString()}`)
+    // Se vier paginado, extrai results; senão, usa como array
+    quartos.value = response.results ?? response
+  } catch (error) {
+    console.error(error)
+    alert('Erro ao carregar quartos.')
+  } finally {
+    loading.value = false
+  }
 }
 
-// Corrigido: Parâmetro tipado e lógica de reset corrigida
+// Abrir modal para criar ou editar
 function openModal(quarto: Quarto | null = null) {
   if (quarto) {
     editingId.value = quarto.id || null
     roomForm.value = { ...quarto }
   } else {
     editingId.value = null
-    roomForm.value = createEmptyRoom() // Usa a função para garantir todos os campos
+    roomForm.value = {
+      numero: '',
+      bloco: '',
+      capacidade_maxima: 4,
+      ocupacao_atual: 0,
+      genero_permitido: 'M',
+      estado: 'Activo'
+    }
   }
   showModal.value = true
 }
 
+function closeModal() {
+  showModal.value = false
+  editingId.value = null
+  // Opcional: resetar formulário para valores padrão
+  roomForm.value = {
+    numero: '',
+    bloco: '',
+    capacidade_maxima: 4,
+    ocupacao_atual: 0,
+    genero_permitido: 'M',
+    estado: 'Activo'
+  }
+}
+
+// Salvar (criar ou atualizar)
 async function saveQuarto() {
-  pending.value = true
+  saving.value = true
   try {
     const url = editingId.value ? `/admin/quartos/${editingId.value}/` : '/admin/quartos/'
     const method = editingId.value ? 'PATCH' : 'POST'
-    
-    await api(url, { method, body: roomForm.value })
-    showModal.value = false
+    // Não enviar ocupacao_atual – o backend já ignora
+    const payload = { ...roomForm.value }
+    delete payload.ocupacao_atual
+    await api(url, { method, body: payload })
+    closeModal()
     await fetchQuartos()
-  } catch (e) {
-    alert("Erro ao salvar quarto. Verifique se o número já existe.")
+    alert(editingId.value ? 'Quarto actualizado com sucesso!' : 'Quarto criado com sucesso!')
+  } catch (error: any) {
+    const msg = error.response?._data?.erro || 'Erro ao salvar quarto. Verifique se o número já existe.'
+    alert(msg)
   } finally {
-    pending.value = false
+    saving.value = false
   }
 }
 
-// Corrigido: Tipagem explícita do parâmetro 'quarto'
+// Excluir quarto
 async function confirmDelete(quarto: Quarto) {
-  if (confirm(`Deseja apagar o quarto ${quarto.numero}?`)) {
-    try {
-      await api(`/admin/quartos/${quarto.id}/`, { method: 'DELETE' })
-      await fetchQuartos()
-    } catch (e: any) {
-      const msg = e.response?._data?.erro || "Erro ao apagar."
-      alert(msg)
-    }
+  if (!confirm(`Deseja apagar o quarto ${quarto.numero}?`)) return
+  try {
+    await api(`/admin/quartos/${quarto.id}/`, { method: 'DELETE' })
+    await fetchQuartos()
+    alert('Quarto apagado com sucesso.')
+  } catch (error: any) {
+    const msg = error.response?._data?.erro || 'Erro ao apagar quarto. Verifique se existem estudantes alocados.'
+    alert(msg)
   }
 }
 
-// Corrigido: Tipagem explícita do parâmetro 's'
-const statusClass = (s: string) => ({
-  'bg-green-100 text-green-700': s === 'Activo',
-  'bg-orange-100 text-orange-700': s === 'Manutenção',
-  'bg-red-100 text-red-700': s === 'Inactivo'
-})
+// Helper para calcular percentagem de ocupação
+function ocupacaoPercent(quarto: Quarto): number {
+  return (quarto.ocupacao_atual / quarto.capacidade_maxima) * 100
+}
+
+// Classes CSS para estado do quarto
+function statusClass(estado: string) {
+  return {
+    'bg-green-100 text-green-700': estado === 'Activo',
+    'bg-orange-100 text-orange-700': estado === 'Manutenção',
+    'bg-red-100 text-red-700': estado === 'Inactivo'
+  }[estado] || ''
+}
 
 onMounted(fetchQuartos)
 </script>
+
+<style scoped>
+.label {
+  @apply block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1;
+}
+.input {
+  @apply w-full px-4 py-2 border rounded-lg shadow-sm bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-2 focus:ring-blue-500 transition-all;
+}
+.btn-primary {
+  @apply px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 dark:bg-blue-500 shadow-sm disabled:opacity-50 transition-all;
+}
+</style>

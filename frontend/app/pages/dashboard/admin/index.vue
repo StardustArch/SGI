@@ -1,171 +1,206 @@
 <template>
   <div class="space-y-8 dark:text-white max-w-8xl mx-auto p-4 md:p-8">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">
-        Dashboard {{ perfil }}
-      </h1>
-      <p class="text-stone-500 dark:text-gray-400 mt-1">
-        Visão geral {{ getDescription() }}
-      </p>
+    
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <h1 class="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">
+          Dashboard <span class="text-rose-500">{{ user?.perfil_nome }}</span>
+        </h1>
+        <p class="text-stone-500 dark:text-gray-400 font-medium">
+          {{ pending ? 'A sincronizar dados...' : 'Visão geral do ecossistema do internato.' }}
+        </p>
+      </div>
+      
+      <button 
+        @click="refresh()" 
+        :disabled="pending"
+        class="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 rounded-2xl shadow-sm hover:bg-stone-50 transition-all active:scale-95 disabled:opacity-50"
+      >
+        <BootstrapIcon name="arrow-clockwise" :class="{ 'animate-spin': pending }" class="w-5 h-5" />
+        <span class="text-sm font-bold">Actualizar</span>
+      </button>
+    </header>
+
+    <div v-if="error" class="p-6 bg-rose-50 border border-rose-100 rounded-[2rem] flex flex-col items-center text-center space-y-3">
+      <BootstrapIcon name="exclamation-triangle-fill" class="text-rose-500 w-12 h-12" />
+      <h3 class="font-bold text-rose-800">Falha na ligação com o servidor</h3>
+      <p class="text-rose-600 text-sm">Não conseguimos recuperar os indicadores de gestão neste momento.</p>
     </div>
 
-    <!-- Seção Administrativa (Gestor e Suporte) -->
-    <div v-if="dashboard?.administrative" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
-        <div class="flex items-center gap-4">
-          <div class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-2xl text-blue-600">
-            <BootstrapIcon name="people" class="w-8 h-8" />
-          </div>
-          <div>
-            <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Alunos Activos</p>
-            <h3 class="text-2xl font-bold">{{ dashboard.administrative.total_estudantes_ativos }}</h3>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
-        <div class="flex items-center gap-4">
-          <div class="p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl text-emerald-600">
-            <BootstrapIcon name="door-closed" class="w-8 h-8" />
-          </div>
-          <div>
-            <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Ocupação de Quartos</p>
-            <h3 class="text-2xl font-bold">{{ dashboard.administrative.total_ocupadas }} / {{ dashboard.administrative.total_vagas }}</h3>
-            <p class="text-xs text-stone-400">{{ dashboard.administrative.vagas_disponiveis }} vagas livres</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
-        <div class="flex items-center gap-4">
-          <div class="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-2xl text-amber-600">
-            <BootstrapIcon name="clock-history" class="w-8 h-8" />
-          </div>
-          <div>
-            <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Pedidos de Saída</p>
-            <h3 class="text-2xl font-bold text-amber-600">{{ dashboard.administrative.pedidos_saida_pendentes }}</h3>
-            <p class="text-xs">pendentes</p>
-          </div>
-        </div>
-      </div>
+    <div v-if="pending" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div v-for="i in 3" :key="i" class="h-32 bg-stone-100 dark:bg-gray-800 animate-pulse rounded-[2rem]"></div>
+      <div class="md:col-span-3 h-64 bg-stone-50 dark:bg-gray-800/50 animate-pulse rounded-[2rem]"></div>
     </div>
 
-    <!-- Seção Financeira (Financeiro e Suporte) -->
-    <div v-if="dashboard?.finance" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
-        <div class="flex items-center gap-4">
-          <div class="p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl text-emerald-600">
-            <BootstrapIcon name="cash-coin" class="w-8 h-8" />
+    <div v-else-if="dashboard" class="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      
+      <!-- Dados Administrativos (Gestor/Suporte) -->
+      <section v-if="dashboard.administrative" class="space-y-4">
+        <h2 class="text-sm font-black uppercase tracking-widest text-stone-400 flex items-center gap-2">
+          <BootstrapIcon name="buildings" /> Gestão de Capacidade
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Card Alunos Activos -->
+          <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-stone-500 text-xs font-bold uppercase">Alunos Activos</p>
+                <h3 class="text-3xl font-black">{{ dashboard.administrative.total_estudantes_ativos || 0 }}</h3>
+              </div>
+              <BootstrapIcon name="people-fill" class="text-blue-500 text-3xl" />
+            </div>
           </div>
-          <div>
-            <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Arrecadado (Mês)</p>
-            <h3 class="text-2xl font-bold">{{ formatMoeda(dashboard.finance.total_arrecadado_mes) }}</h3>
-          </div>
-        </div>
-      </div>
 
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
-        <div class="flex items-center gap-4">
-          <div class="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-2xl text-amber-600">
-            <BootstrapIcon name="hourglass-split" class="w-8 h-8" />
+          <!-- Card Ocupação (calculada) -->
+          <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-stone-500 text-xs font-bold uppercase">Ocupação</p>
+                <h3 class="text-3xl font-black">
+                  {{ ocupacaoPercent }}%
+                </h3>
+                <p class="text-xs text-stone-400">{{ dashboard.administrative.total_ocupadas }}/{{ dashboard.administrative.total_vagas }} camas</p>
+              </div>
+              <BootstrapIcon name="door-closed-fill" :class="ocupacaoPercent > 90 ? 'text-rose-500' : 'text-emerald-500'" class="text-3xl" />
+            </div>
           </div>
-          <div>
-            <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Pendentes</p>
-            <h3 class="text-2xl font-bold">{{ dashboard.finance.total_estudantes_pendentes }} <span class="text-sm font-normal text-stone-400">Alunos</span></h3>
-          </div>
-        </div>
-      </div>
 
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
-        <div class="flex items-center gap-4">
-          <div class="p-3 bg-rose-50 dark:bg-rose-900/30 rounded-2xl text-rose-600">
-            <BootstrapIcon name="exclamation-circle" class="w-8 h-8" />
-          </div>
-          <div>
-            <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Em Atraso</p>
-            <h3 class="text-2xl font-bold text-rose-500">{{ dashboard.finance.total_estudantes_atraso || 0 }}</h3>
+          <!-- Card Pedidos Pendentes -->
+          <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-stone-500 text-xs font-bold uppercase">Pedidos Pendentes</p>
+                <h3 class="text-3xl font-black">{{ dashboard.administrative.pedidos_saida_pendentes || 0 }}</h3>
+              </div>
+              <BootstrapIcon name="clock-history" class="text-orange-500 text-3xl" />
+            </div>
+            <NuxtLink to="/dashboard/admin/exits" class="text-xs text-rose-500 hover:underline mt-2 block">Ver todos</NuxtLink>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- Seção Disciplinar (Disciplinar e Suporte) -->
-    <div v-if="dashboard?.discipline" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-white dark:bg-gray-800 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm p-6">
-        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-          <BootstrapIcon name="exclamation-triangle" class="text-rose-500" />
-          Top Infratores (mês)
-        </h3>
-        <div v-if="dashboard.discipline.top_infratores?.length" class="space-y-3">
-          <div v-for="item in dashboard.discipline.top_infratores" :key="item.estudante_id" class="flex justify-between items-center border-b dark:border-gray-700 pb-2">
-            <span class="font-medium">{{ item.estudante__nome_completo }}</span>
-            <span class="text-rose-500 font-bold">{{ item.total }} sanção(ões)</span>
+      <!-- Dados Financeiros (Financeiro/Suporte) -->
+      <section v-if="dashboard.finance" class="space-y-4">
+        <h2 class="text-sm font-black uppercase tracking-widest text-stone-400 flex items-center gap-2">
+          <BootstrapIcon name="cash-stack" /> Saúde Financeira (Mês Actual)
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-stone-500 text-xs font-bold uppercase">Arrecadado</p>
+                <h3 class="text-3xl font-black text-emerald-600">{{ formatMoeda(dashboard.finance.total_arrecadado_mes || 0) }}</h3>
+              </div>
+              <BootstrapIcon name="cash-coin" class="text-emerald-500 text-3xl" />
+            </div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-stone-500 text-xs font-bold uppercase">Pendentes</p>
+                <h3 class="text-3xl font-black">{{ dashboard.finance.total_estudantes_pendentes || 0 }}</h3>
+              </div>
+              <BootstrapIcon name="hourglass-split" class="text-amber-500 text-3xl" />
+            </div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-stone-500 text-xs font-bold uppercase">Em Atraso</p>
+                <h3 class="text-3xl font-black text-rose-500">{{ dashboard.finance.total_estudantes_atraso || 0 }}</h3>
+              </div>
+              <BootstrapIcon name="exclamation-triangle" class="text-rose-500 text-3xl" />
+            </div>
           </div>
         </div>
-        <p v-else class="text-stone-400 text-sm">Nenhuma sanção registada este mês.</p>
-      </div>
+      </section>
 
-      <div class="bg-white dark:bg-gray-800 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm p-6">
-        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-          <BootstrapIcon name="person-dash" class="text-amber-500" />
-          Maiores Ausências (mês)
-        </h3>
-        <div v-if="dashboard.discipline.top_ausentes?.length" class="space-y-3">
-          <div v-for="item in dashboard.discipline.top_ausentes" :key="item.estudante_id" class="flex justify-between items-center border-b dark:border-gray-700 pb-2">
-            <span class="font-medium">{{ item.estudante__nome_completo }}</span>
-            <span class="text-amber-500 font-bold">{{ item.total }} ausência(s)</span>
+      <!-- Dados Disciplinares (Disciplinar/Suporte) -->
+      <section v-if="dashboard.discipline" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] border border-stone-100 dark:border-gray-700 shadow-sm">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="font-bold text-xl flex items-center gap-2">
+              <BootstrapIcon name="shield-exclamation" class="text-rose-500" /> Top Infratores
+            </h3>
+            <span class="text-xs font-bold text-stone-400">Últimos 30 dias</span>
           </div>
+          <div v-if="dashboard.discipline.top_infratores?.length" class="space-y-4">
+            <div v-for="inf in dashboard.discipline.top_infratores" :key="inf.estudante_id" class="flex justify-between items-center p-4 bg-stone-50 dark:bg-gray-700/50 rounded-2xl">
+              <span class="font-medium">{{ inf.estudante__nome_completo }}</span>
+              <span class="px-3 py-1 bg-rose-100 text-rose-600 rounded-lg text-xs font-black">{{ inf.total }} Sanções</span>
+            </div>
+          </div>
+          <p v-else class="text-stone-400 text-sm">Nenhuma infração registada.</p>
         </div>
-        <p v-else class="text-stone-400 text-sm">Nenhuma ausência registada este mês.</p>
-      </div>
-    </div>
 
-    <!-- Gráfico de sanções por tipo (apenas disciplinares) -->
-    <div v-if="dashboard?.discipline?.sancao_por_tipo?.length" class="bg-white dark:bg-gray-800 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm p-6">
-      <h3 class="font-bold text-lg mb-4">Sanções por Tipo (mês)</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div v-for="tipo in dashboard.discipline.sancao_por_tipo" :key="tipo.tipo_sancao" class="bg-stone-50 dark:bg-gray-700 p-3 rounded-xl text-center">
-          <p class="font-bold text-2xl text-rose-500">{{ tipo.total }}</p>
-          <p class="text-xs">{{ tipo.tipo_sancao }}</p>
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] border border-stone-100 dark:border-gray-700 shadow-sm">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="font-bold text-xl flex items-center gap-2">
+              <BootstrapIcon name="calendar-x" class="text-orange-500" /> Maiores Ausências (Estudo)
+            </h3>
+          </div>
+          <div v-if="dashboard.discipline.top_ausentes?.length" class="space-y-4">
+            <div v-for="aus in dashboard.discipline.top_ausentes" :key="aus.estudante_id" class="flex justify-between items-center p-4 bg-stone-50 dark:bg-gray-700/50 rounded-2xl">
+              <span class="font-medium">{{ aus.estudante__nome_completo }}</span>
+              <span class="px-3 py-1 bg-orange-100 text-orange-600 rounded-lg text-xs font-black">{{ aus.total }} Faltas</span>
+            </div>
+          </div>
+          <p v-else class="text-stone-400 text-sm">Presença total garantida.</p>
         </div>
-      </div>
+      </section>
+
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
+import { useApi } from '~/composables/useApi'
+import { useAuth } from '~/composables/useAuth'
+
 const { api } = useApi()
-const { accessToken, isLoggedIn } = useAuth()
+const { user, fetchUser, accessToken } = useAuth()
 
-// 1. Buscar dados do utilizador logado
-const { data: user, pending: userPending } = await useAsyncData(
-  'user-profile',
-  () => api<any>('/users/me/'),
-  { server: false }
-)
+// Garantir que o user esteja carregado antes do dashboard
+onMounted(async () => {
+  if (!user.value && accessToken.value) {
+    await fetchUser()
+  }
+})
 
-const perfil = computed(() => user.value?.perfil_nome || null)
-console.log(perfil)
-// 2. Buscar dashboard (só executar se perfil for administrativo)
-//    Mas se não for, dashboard fica undefined e o template usa optional chaining.
-const { data: dashboard, pending: dashboardPending, error } = await useAsyncData(
-  'admin-dashboard',
-  () => api<any>('/admin/dashboard/'),
-  {
-    // só executar se o utilizador tiver perfil administrativo
-    immediate: !!perfil.value && ['Gestor', 'Financeiro', 'Disciplinar', 'Suporte'].includes(perfil.value)
+// Buscar dados do dashboard
+const { data: dashboard, pending, error, refresh } = await useAsyncData(
+  'admin-dashboard-data',
+  async () => {
+    if (!accessToken.value) return null
+    return await api<any>('/admin/dashboard/')
+  },
+  { 
+    watch: [user],
+    server: false
   }
 )
-console.log(dashboard.value)
 
-// Helper para descrição (já trata undefined)
-const getDescription = () => {
-  const d = dashboard.value
-  if (!d) return ''
-  if (d.administrative) return 'dos dados administrativos (ocupação, alunos, pedidos).'
-  if (d.finance) return 'do fluxo financeiro (receitas, pendências, atrasos).'
-  if (d.discipline) return 'do comportamento (sanções, ausências).'
-  return ''
+// Calcular percentagem de ocupação (se existirem dados)
+const ocupacaoPercent = computed(() => {
+  if (!dashboard.value?.administrative) return 0
+  const totalVagas = dashboard.value.administrative.total_vagas || 0
+  const totalOcupadas = dashboard.value.administrative.total_ocupadas || 0
+  if (totalVagas === 0) return 0
+  return Math.round((totalOcupadas / totalVagas) * 100)
+})
+
+const formatMoeda = (valor: number) => {
+  return new Intl.NumberFormat('pt-MZ', { style: 'currency', currency: 'MZN' }).format(valor)
 }
-
-const formatMoeda = (valor: any) => new Intl.NumberFormat('pt-MZ', { style: 'currency', currency: 'MZN' }).format(Number(valor))
 </script>
+
+<style scoped>
+.animate-in {
+  animation: fadeIn 0.5s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>

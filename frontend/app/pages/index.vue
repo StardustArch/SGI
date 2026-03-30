@@ -29,7 +29,7 @@
             <input 
               v-model="email" 
               id="email" 
-              type="email" 
+              type="text" 
               required 
               placeholder="seu.email@exemplo.com"
               class="w-full pl-11 pr-4 py-3.5 bg-stone-50 dark:bg-gray-700 border border-stone-200 dark:border-gray-600 rounded-xl text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-200 dark:focus:ring-rose-900 focus:border-rose-400 transition-all font-medium"

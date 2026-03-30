@@ -233,7 +233,10 @@ CORS_ALLOWED_ORIGINS = [
 
 # Para instalação LAN: adicionar o IP do servidor frontend
 # CORS_ALLOWED_ORIGINS += ["http://192.168.1.100:3000"]
-
+AUTHENTICATION_BACKENDS = [
+    'core.backends.IdentificadorBackend',
+    'django.contrib.auth.backends.ModelBackend',  # fallback
+]
 # ---------------------------------------------------------------------------
 # LOGGING
 # Regista warnings e erros de notificações sem crashar o sistema

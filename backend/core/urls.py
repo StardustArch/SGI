@@ -53,7 +53,7 @@ urlpatterns = [
     # =========================================================================
     path('admin/presencas/batch/', views.PresencaBatchCreateView.as_view(), name='admin-presenca-batch'),
     path('admin/presencas/<int:pk>/', views.PresencaEstudoDetailView.as_view(), name='detalhe-presenca'),
-
+    path('admin/presencas/', views.PresencaListView.as_view(), name='presenca-list'),
     # =========================================================================
     # QUARTOS
     # =========================================================================

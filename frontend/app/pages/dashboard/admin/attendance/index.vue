@@ -13,6 +13,7 @@
           v-model="dataChamada" 
           type="date" 
           class="bg-transparent border-none focus:ring-0 font-bold text-gray-700 dark:text-white"
+          @change="carregarPresencasExistentes"
         />
       </div>
     </div>
@@ -32,7 +33,7 @@
       </div>
       <button 
         @click="salvarChamada"
-        :disabled="submitting || pending"
+        :disabled="submitting || loadingEstudantes"
         class="bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-bold hover:opacity-90 transition-all flex flex-col items-center justify-center shadow-lg disabled:opacity-50"
       >
         <span v-if="submitting" class="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full mb-1"></span>
@@ -40,8 +41,13 @@
       </button>
     </div>
 
-    <div v-if="pending" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-       <div v-for="i in 6" :key="i" class="h-24 bg-stone-100 dark:bg-gray-800 animate-pulse rounded-[1.5rem]"></div>
+    <div v-if="loadingEstudantes" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-for="i in 6" :key="i" class="h-24 bg-stone-100 dark:bg-gray-800 animate-pulse rounded-[1.5rem]"></div>
+    </div>
+
+    <div v-else-if="listaChamada.length === 0" class="text-center py-20 bg-stone-50 dark:bg-gray-800/50 rounded-[2rem] border-2 border-dashed border-stone-200">
+      <BootstrapIcon name="emoji-frown" class="text-4xl text-stone-400 mb-2" />
+      <p class="text-stone-500 font-bold">Nenhum estudante ativo encontrado.</p>
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -56,7 +62,7 @@
           </div>
           <div class="min-w-0">
             <h3 class="font-bold text-gray-800 dark:text-white truncate w-32 md:w-40">{{ aluno.nome_completo }}</h3>
-            <p class="text-[10px] text-stone-400 font-bold uppercase">Quarto {{ aluno.quarto }}</p>
+            <p class="text-[10px] text-stone-400 font-bold uppercase">Quarto {{ aluno.quarto_numero || 'N/A' }}</p>
           </div>
         </div>
 
@@ -89,28 +95,60 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+
 const { api } = useApi()
 
 const dataChamada = ref(new Date().toISOString().substr(0, 10))
 const submitting = ref(false)
+const loadingEstudantes = ref(false)
 const listaChamada = ref<any[]>([])
 
-// 1. Carregar todos os alunos ativos
-const { data: estudantes, pending } = await useAsyncData('admin-estudantes-chamada', 
-  () => api<any[]>('/admin/estudantes/') // Usa o endpoint que lista estudantes
-)
-
-// 2. Preparar a lista local com estado inicial "Presente"
-watch(estudantes, (val) => {
-  if (val) {
-    listaChamada.value = val.map(e => ({
+// 1. Carregar todos os alunos ativos (tratando paginação)
+async function carregarEstudantes() {
+  loadingEstudantes.value = true
+  try {
+    const response = await api<any>('/admin/estudantes/?estado=Activo')
+    // A API pode retornar um objeto paginado ou um array direto
+    const estudantes = response.results ?? response
+    listaChamada.value = estudantes.map((e: any) => ({
       ...e,
-      estado: 'Presente'
+      estado: 'Presente' // estado inicial padrão
     }))
+  } catch (error) {
+    console.error('Erro ao carregar estudantes:', error)
+    alert('Não foi possível carregar a lista de alunos.')
+  } finally {
+    loadingEstudantes.value = false
   }
-}, { immediate: true })
+}
 
-// 3. Contagem em tempo real para os cards do topo
+// 2. Carregar presenças existentes para a data selecionada
+async function carregarPresencasExistentes() {
+  if (!dataChamada.value) return
+  try {
+    const response = await api<any>(`/admin/presencas/?data_presenca=${dataChamada.value}`)
+    const presencas = response.results ?? response
+    if (presencas && presencas.length > 0) {
+      // Mapeia os estados existentes para a lista de estudantes
+      const mapa = new Map()
+      presencas.forEach((p: any) => mapa.set(p.estudante, p.estado))
+      listaChamada.value.forEach(aluno => {
+        if (mapa.has(aluno.utilizador_id)) {
+          aluno.estado = mapa.get(aluno.utilizador_id)
+        }
+      })
+    } else {
+      // Se não houver presenças, resetar para "Presente"
+      listaChamada.value.forEach(aluno => aluno.estado = 'Presente')
+    }
+  } catch (error) {
+    console.error('Erro ao carregar presenças existentes:', error)
+    // Se o endpoint não existir, apenas ignora
+  }
+}
+
+// 3. Contagem em tempo real
 const contagem = computed(() => {
   return {
     presentes: listaChamada.value.filter(a => a.estado === 'Presente').length,
@@ -119,13 +157,18 @@ const contagem = computed(() => {
   }
 })
 
-// 4. Salvar a chamada no backend
+// 4. Salvar a chamada
 async function salvarChamada() {
-  if (!confirm(`Confirmar registo de presença para ${contagem.value.presentes} alunos em ${dataChamada.value}?`)) return
-  
+  if (!dataChamada.value) {
+    alert('Selecione uma data antes de submeter.')
+    return
+  }
+
+  const total = listaChamada.value.length
+  const presentes = contagem.value.presentes
+  if (!confirm(`Confirmar registo de presença para ${presentes} de ${total} alunos em ${dataChamada.value}?`)) return
+
   submitting.value = true
-  
-  // Extraímos apenas os IDs dos ausentes e justificados para o serializer Batch
   const ausentes_ids = listaChamada.value.filter(a => a.estado === 'Ausente').map(a => a.utilizador_id)
   const justificados_ids = listaChamada.value.filter(a => a.estado === 'Justificado').map(a => a.utilizador_id)
 
@@ -138,11 +181,23 @@ async function salvarChamada() {
         justificados_ids
       }
     })
-    alert("Presenças registadas com sucesso!")
-  } catch (e: any) {
-    alert(e.data?.erro || "Erro ao salvar. Verifique se já existe chamada para este dia.")
+    alert('Presenças registadas com sucesso!')
+    // Opcional: recarregar as presenças para confirmar (se o endpoint GET existir)
+  } catch (error: any) {
+    const msg = error.response?._data?.erro || 'Erro ao salvar. Verifique se já existe chamada para este dia.'
+    alert(msg)
   } finally {
     submitting.value = false
   }
 }
+
+// Inicializar
+carregarEstudantes()
+
+// Quando a data mudar, recarrega as presenças existentes
+watch(dataChamada, () => {
+  if (listaChamada.value.length > 0) {
+    carregarPresencasExistentes()
+  }
+})
 </script>

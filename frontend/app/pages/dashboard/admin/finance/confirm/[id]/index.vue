@@ -136,6 +136,12 @@ const { data: mensalidade, pending, refresh } = await useAsyncData(
   () => api<any>(`/admin/mensalidades/${route.params.id}/`)
 )
 
+watch(mensalidade, (val) => {
+  if (val && val.valor_pago) {
+    form.valor_pago = val.valor_pago
+  }
+}, { immediate: true })
+
 async function confirmarPagamento() {
   if (!confirm('Tem a certeza que deseja dar esta mensalidade como PAGA?')) return
 

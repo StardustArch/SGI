@@ -81,7 +81,6 @@
           <tr v-for="item in (mensalidades?.results || mensalidades || [])" :key="item.id" class="hover:bg-stone-50/50 dark:hover:bg-gray-700/30 transition-colors">
             <td class="p-5 font-bold text-gray-800 dark:text-white">
                {{ item.nome_estudante }}
-               <p class="text-[10px] text-stone-400 font-normal">Nº: {{ item.num_estudante }}</p>
             </td>
             <td class="p-5 text-sm text-stone-500 capitalize">{{ formatMes(item.mes_referencia) }}</td>
             <td class="p-5">
@@ -107,20 +106,26 @@
 <script setup lang="ts">
 const { api } = useApi()
 
-// Estados Reativos
 const pesquisa = ref('')
 const filtroEstado = ref<string | null>(null)
 
-// 1. Buscar Resumo (Stats)
-const { data: stats } = await useAsyncData('admin-fin-stats', () => api<any>('/admin/financeiro/sumario/'))
-console.log(stats.value)
-// 2. Buscar Mensalidades (Paginado e Filtrado)
-const { data: mensalidades } = await useAsyncData(
-  'admin-fin-list', 
-  () => api<any>('/admin/financeiro/mensalidades/'), // <--- Sem os []
+// 1. Buscar dashboard para stats financeiros
+const { data: dashboard } = await useAsyncData('admin-dashboard', () => api<any>('/admin/dashboard/'))
+const stats = computed(() => dashboard.value?.finance)
+
+// 2. Buscar mensalidades (listagem)
+const { data: mensalidades, refresh } = await useAsyncData(
+  'admin-fin-list',
+  () => {
+    const params: any = {}
+    if (filtroEstado.value) params.estado = filtroEstado.value
+    if (pesquisa.value) params.search = pesquisa.value
+    return api<any>('/admin/financeiro/mensalidades/', { params })
+  },
   { watch: [pesquisa, filtroEstado] }
 )
-// Helpers Visuais
+
+// Helpers
 const getStatusBadge = (estado: string) => {
   if (estado === 'Pago') return 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300'
   if (estado === 'Atraso') return 'bg-rose-50 text-rose-700 border-rose-100'

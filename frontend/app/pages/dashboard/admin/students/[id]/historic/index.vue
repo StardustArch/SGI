@@ -104,15 +104,16 @@ const { api } = useApi()
 const route = useRoute()
 const activeTab = ref('Financeiro')
 
-// Chamada de dados em paralelo para popular o Dossiê
 const { data, pending } = await useAsyncData(`student-full-history-${route.params.id}`, async () => {
-  const [estudante, mensalidades, sancoes, presencas, saidas] = await Promise.all([
-    api<any>(`/admin/estudantes/${route.params.id}/`),
-    api<any[]>(`/admin/mensalidades/`, { params: { estudante: route.params.id } }),
-    api<any[]>(`/admin/sancoes/`, { params: { estudante: route.params.id } }),
-    api<any[]>(`/admin/presencas/`, { params: { estudante: route.params.id } }),
-    api<any[]>(`/admin/pedidos-saida/`, { params: { estudante: route.params.id } })
-  ])
+  const estudante = await api<any>(`/admin/estudantes/${route.params.id}/`)
+  const mensalidadesResp = await api<any>(`/admin/estudantes/${route.params.id}/mensalidades/`)
+  const mensalidades = mensalidadesResp.results ?? mensalidadesResp
+  const sancoesResp = await api<any>(`/admin/estudantes/${route.params.id}/sancoes/`)
+  const sancoes = sancoesResp.results ?? sancoesResp
+  const presencasResp = await api<any>(`/admin/estudantes/${route.params.id}/presencas/`)
+  const presencas = presencasResp.results ?? presencasResp
+  const saidasResp = await api<any>(`/admin/pedidos-saida/?estudante=${route.params.id}`)
+  const saidas = saidasResp.results ?? saidasResp
   return { estudante, mensalidades, sancoes, presencas, saidas }
 })
 

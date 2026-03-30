@@ -84,11 +84,15 @@ async function gerarLote() {
   resultado.value = null
   
   try {
-    const res = await api('/admin/financeiro/gerar-lote/', {
-      method: 'POST',
-      body: { mes_referencia: mesReferencia.value }
-    })
-    resultado.value = res
+const res = await api('/admin/financeiro/gerar-lote/', {
+  method: 'POST',
+  body: { mes_referencia: mesReferencia.value }
+})
+resultado.value = {
+  mensagem: res.mensagem,
+  novas_mensalidades: res.mensalidades_criadas,
+  registos_existentes_ignorados: res.ja_existiam
+}
   } catch (e: any) {
     alert(e.data?.erro || "Erro ao processar lote.")
   } finally {

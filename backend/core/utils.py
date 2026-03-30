@@ -1,7 +1,8 @@
 # Ficheiro: backend/core/utils.py
 
 from django.utils import timezone
-
+import random
+import string
 
 def gerar_numero_recibo() -> str:
     """
@@ -28,3 +29,8 @@ def gerar_numero_recibo() -> str:
         num = 1
 
     return f"REC-{ano}-{num:04d}"
+
+def gerar_codigo_acesso(prefixo='IICB', tamanho=6):
+    """Gera código no formato IICB-XXXXXX (X = letras maiúsculas e números)"""
+    sufixo = ''.join(random.choices(string.ascii_uppercase + string.digits, k=tamanho))
+    return f"{prefixo}-{sufixo}"

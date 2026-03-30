@@ -31,8 +31,8 @@
             <label class="text-[10px] font-bold text-stone-400 uppercase ml-1">Estudante Infrator</label>
             <select v-model="form.estudante" required class="admin-input appearance-none">
               <option value="" disabled>Selecione o estudante...</option>
-              <option v-for="aluno in estudantes" :key="aluno.utilizador_id" :value="aluno.utilizador_id">
-                {{ aluno.nome_completo }} (Quarto {{ aluno.quarto }})
+              <option v-for="aluno in estudantesLista" :key="aluno.utilizador_id" :value="aluno.utilizador_id">
+                {{ aluno.nome_completo }} (Quarto {{ aluno.quarto_numero || 'N/A' }})
               </option>
             </select>
           </div>
@@ -82,22 +82,22 @@
       
       <div v-if="pendingList" class="p-8 text-center animate-pulse text-stone-400 font-bold">A carregar registos...</div>
       
-      <div v-else-if="sancoes.length === 0" class="p-12 text-center">
+      <div v-else-if="sancoesLista.length === 0" class="p-12 text-center">
         <BootstrapIcon name="shield-check" class="text-5xl text-emerald-400 mb-3 mx-auto" />
         <p class="text-stone-500 font-bold">Nenhum registo disciplinar recente.</p>
       </div>
 
       <div v-else class="divide-y divide-stone-100 dark:divide-gray-700">
-        <div v-for="s in sancoes" :key="s.id" class="p-6 hover:bg-stone-50/50 dark:hover:bg-gray-700/30 transition-colors flex flex-col md:flex-row gap-6">
+        <div v-for="s in sancoesLista" :key="s.id" class="p-6 hover:bg-stone-50/50 dark:hover:bg-gray-700/30 transition-colors flex flex-col md:flex-row gap-6">
           <div class="shrink-0 text-center md:border-r md:pr-6 border-stone-100 dark:border-gray-700 min-w-[100px]">
             <span class="block text-2xl font-black text-rose-500">{{ formatDia(s.data_ocorrencia) }}</span>
             <span class="block text-[10px] font-bold text-stone-400 uppercase">{{ formatMesAno(s.data_ocorrencia) }}</span>
           </div>
           <div class="flex-1 space-y-2">
             <div class="flex flex-wrap items-center justify-between gap-2">
-<h4 class="font-bold text-lg text-gray-800 dark:text-white leading-none">
-  {{ getNomeEstudante(s.estudante) }}
-</h4>
+              <h4 class="font-bold text-lg text-gray-800 dark:text-white leading-none">
+                {{ nomeEstudanteMap[s.estudante] || `Estudante #${s.estudante}` }}
+              </h4>
               <span class="px-3 py-1 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[10px] font-bold uppercase rounded-lg border border-rose-100 dark:border-rose-800/30">
                 {{ s.tipo_sancao }}
               </span>
@@ -112,6 +112,8 @@
 </template>
 
 <script setup lang="ts">
+import { ref, reactive, computed } from 'vue'
+
 const { api } = useApi()
 
 const showForm = ref(false)
@@ -131,15 +133,40 @@ const form = reactive({
   descricao: ''
 })
 
-// Buscar Estudantes para o Select
-const { data: estudantes } = await useAsyncData('admin-estudantes-sancoes', () => api<any[]>('/admin/estudantes/'))
+// --- Lista de estudantes (para o select) ---
+const { data: estudantesRaw, pending: pendingEstudantes } = await useAsyncData('admin-estudantes-sancoes', 
+  () => api<any>('/admin/estudantes/')
+)
+const estudantesLista = computed(() => {
+  const raw = estudantesRaw.value
+  if (!raw) return []
+  return raw.results ?? raw
+})
 
-// Buscar Histórico de Sanções Globais
-const { data: sancoes, pending: pendingList, refresh } = await useAsyncData('admin-sancoes-lista', () => api<any[]>('/admin/sancoes/'), {
-  default: () => []
+// Mapeia ID -> nome para usar na listagem
+const nomeEstudanteMap = computed(() => {
+  const map: Record<number, string> = {}
+  estudantesLista.value.forEach((e: any) => {
+    map[e.utilizador_id] = e.nome_completo
+  })
+  return map
+})
+
+// --- Lista de sanções (com paginação) ---
+const { data: sancoesRaw, pending: pendingList, refresh } = await useAsyncData('admin-sancoes-lista', 
+  () => api<any>('/admin/sancoes/')
+)
+const sancoesLista = computed(() => {
+  const raw = sancoesRaw.value
+  if (!raw) return []
+  return raw.results ?? raw
 })
 
 async function submitSancao() {
+  if (!form.estudante || !form.tipo_sancao || !form.descricao) {
+    alert('Preencha todos os campos obrigatórios.')
+    return
+  }
   saving.value = true
   try {
     await api('/admin/sancoes/', {
@@ -147,17 +174,16 @@ async function submitSancao() {
       body: form
     })
     alert('Sanção registada com sucesso!')
-    
-    // Limpar o form
+    // Limpar formulário
     form.estudante = ''
     form.tipo_sancao = ''
     form.descricao = ''
     showForm.value = false
-    
     // Recarregar a lista
     refresh()
-  } catch (error) {
-    alert('Erro ao registar a sanção. Verifique os dados.')
+  } catch (error: any) {
+    const msg = error.response?._data?.erro || 'Erro ao registar a sanção. Verifique os dados.'
+    alert(msg)
   } finally {
     saving.value = false
   }
@@ -166,12 +192,6 @@ async function submitSancao() {
 // Helpers
 const formatDia = (d: string) => new Date(d).getDate().toString().padStart(2, '0')
 const formatMesAno = (d: string) => new Date(d).toLocaleDateString('pt-PT', { month: 'short', year: 'numeric' })
-// Helper para traduzir o ID no nome real do aluno
-function getNomeEstudante(id: number) {
-  if (!estudantes.value) return `Estudante #${id}`
-  const aluno = estudantes.value.find((e: any) => e.utilizador_id === id)
-  return aluno ? aluno.nome_completo : `Estudante #${id}`
-}
 </script>
 
 <style scoped>

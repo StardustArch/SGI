@@ -106,11 +106,17 @@ const filtroEstado = ref('Pendente')
 const observacoes = reactive<Record<number, string>>({})
 
 // 1. Carregar Pedidos
-const { data: pedidos, pending, refresh } = await useAsyncData(
+const { data: pedidosRaw, pending, refresh } = await useAsyncData(
   'admin-pedidos-saida',
-  () => api<any[]>('/admin/pedidos-saida/', { params: { estado: filtroEstado.value } }),
+  () => api<any>('/admin/pedidos-saida/', { params: { estado: filtroEstado.value } }),
   { watch: [filtroEstado] }
 )
+
+const pedidos = computed(() => {
+  const raw = pedidosRaw.value
+  if (!raw) return []
+  return raw.results ?? raw
+})
 
 // 2. Ação de Aprovar/Rejeitar
 async function decidirPedido(id: number, novoEstado: string) {
