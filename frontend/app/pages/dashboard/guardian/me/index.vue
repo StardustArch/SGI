@@ -1,89 +1,87 @@
 <template>
-  <div class="space-y-8 dark:text-white max-w-8xl mx-auto p-4 md:p-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
     
-    <div>
-      <h1 class="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">O Meu Perfil</h1>
-      <p class="text-stone-500 dark:text-gray-400 mt-1 text-lg">Gerencie os seus dados de contacto e segurança.</p>
+    <!-- Cabeçalho -->
+    <div class="mb-6 md:mb-8">
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">O Meu Perfil</h1>
+      <p class="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">Gerencie os seus dados de contacto e segurança.</p>
     </div>
 
-    <div v-if="userPending || loadingProfile" class="flex flex-col items-center justify-center py-20">
-      <div class="animate-spin h-10 w-10 border-4 border-rose-500 border-t-transparent rounded-full mb-4"></div>
-      <p class="text-stone-400">A carregar informações...</p>
+    <!-- Loading -->
+    <div v-if="userPending || loadingProfile" class="flex flex-col items-center justify-center py-20 space-y-4">
+      <div class="animate-spin h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+      <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">A carregar informações...</p>
     </div>
 
-    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Conteúdo principal -->
+    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
       
-      <div class="lg:col-span-2 space-y-8">
+      <!-- Coluna da esquerda -->
+      <div class="lg:col-span-2 space-y-5 md:space-y-6">
         
-        <div class="bg-white dark:bg-gray-800 rounded-[2rem] p-8 border border-stone-100 dark:border-gray-700 shadow-sm flex items-start gap-6 relative overflow-hidden">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-stone-100 rounded-full -mr-10 -mt-10 dark:bg-gray-700 opacity-50"></div>
-
-          <div class="h-20 w-20 rounded-2xl bg-rose-50 dark:bg-gray-700 text-rose-500 flex items-center justify-center text-2xl font-bold border border-rose-100 dark:border-gray-600 shrink-0 z-10">
+        <!-- Card de identificação -->
+        <section class="bg-white dark:bg-slate-900 rounded-xl p-5 md:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex items-start gap-4 sm:gap-6">
+          <div class="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl sm:text-2xl font-bold border border-blue-100 dark:border-blue-800 shrink-0">
             {{ getIniciais(userData?.first_name || '') }}
           </div>
 
-          <div class="z-10">
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
+          <div class="min-w-0">
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white break-words">
               {{ userData?.first_name }} {{ userData?.last_name }}
             </h2>
-            <p class="text-stone-500 dark:text-gray-400 mt-1 flex items-center gap-2">
-              <span class="px-2 py-0.5 rounded bg-stone-100 dark:bg-gray-700 text-xs font-bold uppercase tracking-wide border border-stone-200 dark:border-gray-600">
+            <div class="mt-1">
+              <span class="px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                 Encarregado
               </span>
-            </p>
-            <p class="text-sm text-stone-400 mt-4">
-              <span class="font-bold uppercase text-[10px] tracking-wider">Email de Login:</span><br>
-              {{ userData?.email }}
-            </p>
-          </div>
-        </div>
+            </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-[2rem] p-8 border border-stone-100 dark:border-gray-700 shadow-sm">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+          </div>
+        </section>
+
+        <!-- Card de contactos -->
+        <section class="bg-white dark:bg-slate-900 rounded-xl p-5 md:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <h3 class="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <BootstrapIcon name="telephone" class="w-5 h-5 text-slate-400" />
               Meus Contactos
             </h3>
-            <span class="text-xs text-stone-400 bg-stone-50 dark:bg-gray-700 px-2 py-1 rounded">Editável</span>
+            <span class="text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 px-2.5 py-0.5 rounded-md">Editável</span>
           </div>
 
-          <div v-if="msgProfile.text" :class="['mb-6 p-4 rounded-xl flex items-center gap-3 text-sm font-medium', msgProfile.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200']">
-             <div :class="['w-2 h-2 rounded-full', msgProfile.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500']"></div>
-             {{ msgProfile.text }}
+          <!-- Mensagem de feedback -->
+          <div v-if="msgProfile.text" :class="[
+            'mb-5 p-3 rounded-lg flex items-start gap-2 text-sm border',
+            msgProfile.type === 'success' 
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30' 
+              : 'bg-red-50 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30'
+          ]">
+            <BootstrapIcon v-if="msgProfile.type === 'success'" name="check-circle-fill" class="w-4 h-4 shrink-0 mt-0.5" />
+            <BootstrapIcon v-else name="exclamation-triangle-fill" class="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{{ msgProfile.text }}</span>
           </div>
 
-          <form @submit.prevent="handleUpdateProfile" class="space-y-5">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-stone-500 uppercase ml-1">Telefone Principal</label>
-                <div class="relative">
-                  <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-stone-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                  </div>
-                  <input 
-                    v-model="formProfile.telefone_principal" 
-                    type="text" 
-                    class="w-full bg-stone-50 dark:bg-gray-700 border border-stone-200 dark:border-gray-600 text-gray-800 dark:text-white rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-rose-200 transition-all font-medium"
-                    placeholder="Ex: 841234567"
-                    required
-                  />
-                </div>
+          <form @submit.prevent="handleUpdateProfile" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Telefone Principal</label>
+                <input 
+                  v-model="formProfile.telefone_principal" 
+                  type="text" 
+                  class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Ex: 841234567"
+                  required
+                />
               </div>
 
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-stone-500 uppercase ml-1">Email de Contacto</label>
-                <div class="relative">
-                  <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-stone-400">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                  </div>
-                  <input 
-                    v-model="formProfile.email_contacto" 
-                    type="email" 
-                    class="w-full bg-stone-50 dark:bg-gray-700 border border-stone-200 dark:border-gray-600 text-gray-800 dark:text-white rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-rose-200 transition-all font-medium"
-                    placeholder="email@exemplo.com"
-                    required
-                  />
-                </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email de Contacto</label>
+                <input 
+                  v-model="formProfile.email_contacto" 
+                  type="email" 
+                  class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="email@exemplo.com"
+                  required
+                />
               </div>
             </div>
 
@@ -91,56 +89,83 @@
               <button 
                 type="submit" 
                 :disabled="pendingProfileUpdate"
-                class="px-6 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+                class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 min-h-[44px]"
               >
-                <span v-if="pendingProfileUpdate" class="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+                <span v-if="pendingProfileUpdate" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
                 {{ pendingProfileUpdate ? 'A guardar...' : 'Atualizar Contactos' }}
               </button>
             </div>
           </form>
-        </div>
+        </section>
 
       </div>
 
-      <div class="space-y-8">
+      <!-- Coluna da direita - Segurança -->
+      <div class="space-y-5 md:space-y-6">
         
-        <div class="bg-white dark:bg-gray-800 rounded-[2rem] p-8 border border-stone-100 dark:border-gray-700 shadow-sm relative overflow-hidden">
-          
-          <div class="flex items-center gap-2 mb-6">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-            <h3 class="text-lg font-bold text-gray-800 dark:text-white">Segurança</h3>
-          </div>
+        <section class="bg-white dark:bg-slate-900 rounded-xl p-5 md:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h3 class="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <BootstrapIcon name="shield-lock" class="w-5 h-5 text-slate-400" />
+            Segurança
+          </h3>
 
-          <div v-if="msgPassword.text" :class="['mb-6 p-4 rounded-xl flex items-center gap-3 text-sm font-medium', msgPassword.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200']">
-             {{ msgPassword.text }}
+          <!-- Mensagem de feedback da senha -->
+          <div v-if="msgPassword.text" :class="[
+            'mb-5 p-3 rounded-lg flex items-start gap-2 text-sm border',
+            msgPassword.type === 'success' 
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30' 
+              : 'bg-red-50 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30'
+          ]">
+            <BootstrapIcon v-if="msgPassword.type === 'success'" name="check-circle-fill" class="w-4 h-4 shrink-0 mt-0.5" />
+            <BootstrapIcon v-else name="exclamation-triangle-fill" class="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{{ msgPassword.text }}</span>
           </div>
 
           <form @submit.prevent="handleChangePassword" class="space-y-4">
             <div>
-              <label class="text-xs font-bold text-stone-500 uppercase ml-1 block mb-1">Senha Atual</label>
-              <input v-model="formSenha.old_password" type="password" required class="w-full bg-stone-50 dark:bg-gray-700 border border-stone-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-rose-200 transition-all font-medium" />
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Senha Atual</label>
+              <input 
+                v-model="formSenha.old_password" 
+                type="password" 
+                required 
+                placeholder="••••••••"
+                class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+              />
             </div>
             
             <div>
-              <label class="text-xs font-bold text-stone-500 uppercase ml-1 block mb-1">Nova Senha</label>
-              <input v-model="formSenha.new_password" type="password" required class="w-full bg-stone-50 dark:bg-gray-700 border border-stone-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-rose-200 transition-all font-medium" />
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nova Senha</label>
+              <input 
+                v-model="formSenha.new_password" 
+                type="password" 
+                required 
+                placeholder="••••••••"
+                class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+              />
             </div>
 
             <div>
-              <label class="text-xs font-bold text-stone-500 uppercase ml-1 block mb-1">Confirmar Nova Senha</label>
-              <input v-model="formSenha.confirm_password" type="password" required class="w-full bg-stone-50 dark:bg-gray-700 border border-stone-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-rose-200 transition-all font-medium" />
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Confirmar Nova Senha</label>
+              <input 
+                v-model="formSenha.confirm_password" 
+                type="password" 
+                required 
+                placeholder="••••••••"
+                class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+              />
             </div>
 
             <button 
               type="submit" 
               :disabled="pendingSenha"
-              class="w-full py-3 rounded-xl bg-rose-500 text-white font-bold text-sm hover:bg-rose-600 shadow-lg shadow-rose-200 dark:shadow-none transition-all disabled:opacity-50 mt-2"
+              class="w-full mt-6 py-3 sm:py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center gap-2 min-h-[44px]"
             >
+              <span v-if="pendingSenha" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
               {{ pendingSenha ? 'A processar...' : 'Alterar Senha' }}
             </button>
           </form>
 
-        </div>
+        </section>
 
       </div>
 
@@ -149,9 +174,8 @@
 </template>
 
 <script setup lang="ts">
-import { inject, type Ref } from 'vue'
+import { inject, type Ref, ref, reactive, onMounted } from 'vue'
 const { api } = useApi()
-
 // Dados Injetados (Layout/Dashboard)
 interface UserData {
   id: number;
@@ -256,8 +280,6 @@ const getIniciais = (nome: string) => {
   if (!limpo) return '??';
   
   const partes = limpo.split(/\s+/);
-  
-  // Usamos '?.' para aceder com segurança e '|| ""' caso falhe
   const primeira = partes[0]?.[0] || '';
   const ultima = partes.length > 1 ? partes[partes.length - 1]?.[0] || '' : '';
 

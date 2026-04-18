@@ -1,87 +1,55 @@
 <template>
-  <div class="max-w-7xl mx-auto p-4 md:p-8 min-h-[80vh] flex flex-col justify-center">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
     
-    <div v-if="userPending" class="space-y-8 animate-pulse">
-      <div class="h-12 bg-gray-200 dark:bg-gray-700 rounded-2xl w-1/3"></div>
-      <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded-xl w-2/3"></div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div v-for="n in 4" :key="n" class="h-48 bg-gray-200 dark:bg-gray-700 rounded-[2rem]"></div>
+    <div v-if="userPending" class="animate-pulse space-y-8">
+      <div class="space-y-3">
+        <div class="h-8 bg-slate-200 dark:bg-slate-700 rounded-lg w-1/4"></div>
+        <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded-lg w-2/4"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div v-for="i in 3" :key="i" class="h-32 bg-slate-200 dark:bg-slate-700 rounded-xl"></div>
       </div>
     </div>
     
-    <div v-else-if="userData" class="space-y-10">
+    <div v-else-if="userData" class="space-y-8">
       
-      <div class="relative">
-        <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-4">
-          Olá, <span class="text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-orange-500">{{ userData.first_name }}!</span> 👋
-        </h1>
-        <p class="text-xl text-stone-500 dark:text-gray-400 max-w-2xl leading-relaxed">
-          Bem-vindo ao seu portal do estudante. O que deseja tratar hoje?
-        </p>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+      <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            Olá, {{ userData.first_name }}
+          </h1>
+          <p class="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">
+            Bem-vindo ao seu portal do residente. Resumo das suas actividades.
+          </p>
+        </div>
         
-        <NuxtLink to="/dashboard/student/finance" class="group nav-card">
-          <div class="card-icon-bg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
-            <BootstrapIcon name="wallet2" class="w-8 h-8" />
+        <div class="flex items-center gap-3">
+          <div class="text-right hidden md:block">
+            <p class="text-sm font-medium text-slate-900 dark:text-white">{{ userData.first_name }} {{ userData.last_name }}</p>
+            <NuxtLink to="/dashboard/student/me/security" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+              Gerir Segurança
+            </NuxtLink>
           </div>
-          <div>
-            <h3 class="card-title group-hover:text-emerald-600 transition-colors">Financeiro</h3>
-            <p class="card-desc">Mensalidades e pagamentos.</p>
+          <div class="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center text-lg font-bold border border-blue-200 dark:border-blue-800">
+            {{ getIniciais(userData.first_name, userData.last_name) }}
           </div>
-          <div class="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1 text-emerald-500">
-            <BootstrapIcon name="arrow-right" class="w-6 h-6" />
+        </div>
+      </header>
+
+      <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
+        
+        <NuxtLink to="/dashboard/student/me" class="group bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200 flex flex-col h-full">
+          <div class="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 mb-4 group-hover:bg-blue-50 group-hover:text-blue-600 dark:group-hover:bg-blue-900/30 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+          </div>
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">Dossiê Pessoal</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400 flex-grow">Consulte os seus dados pessoais, informações do encarregado e registo de presenças.</p>
+          <div class="mt-4 text-sm font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+            Aceder Perfil <span aria-hidden="true">&rarr;</span>
           </div>
         </NuxtLink>
 
-        <NuxtLink to="/dashboard/student/exits" class="group nav-card">
-          <div class="card-icon-bg bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400">
-            <BootstrapIcon name="door-open" class="w-8 h-8" />
-          </div>
-          <div>
-            <h3 class="card-title group-hover:text-rose-600 transition-colors">Pedidos de Saída</h3>
-            <p class="card-desc">Solicitar e consultar autorizações.</p>
-          </div>
-          <div class="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1 text-rose-500">
-            <BootstrapIcon name="arrow-right" class="w-6 h-6" />
-          </div>
-        </NuxtLink>
-
-        <NuxtLink to="/dashboard/student/attendance" class="group nav-card">
-          <div class="card-icon-bg bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400">
-            <BootstrapIcon name="calendar-check" class="w-8 h-8" />
-          </div>
-          <div>
-            <h3 class="card-title group-hover:text-violet-600 transition-colors">Presenças</h3>
-            <p class="card-desc">Histórico de assiduidade.</p>
-          </div>
-          <div class="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1 text-violet-500">
-            <BootstrapIcon name="arrow-right" class="w-6 h-6" />
-          </div>
-        </NuxtLink>
-
-        <NuxtLink to="/dashboard/student/discipline" class="group nav-card">
-          <div class="card-icon-bg bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400">
-            <BootstrapIcon name="shield-exclamation" class="w-8 h-8" />
-          </div>
-          <div>
-            <h3 class="card-title group-hover:text-amber-600 transition-colors">Disciplina</h3>
-            <p class="card-desc">Ocorrências e comportamento.</p>
-          </div>
-          <div class="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1 text-amber-500">
-            <BootstrapIcon name="arrow-right" class="w-6 h-6" />
-          </div>
-        </NuxtLink>
-
-      </div>
-      
-      <div class="pt-8 border-t border-stone-100 dark:border-gray-700">
-         <NuxtLink to="/dashboard/student/me" class="inline-flex items-center gap-2 text-sm font-bold text-stone-400 hover:text-rose-500 transition-colors">
-            <BootstrapIcon name="person-circle" />
-            Gerir o meu perfil e senha
-         </NuxtLink>
-      </div>
+      </section>
 
     </div>
   </div>
@@ -91,37 +59,17 @@
 import { inject, type Ref } from 'vue'
 
 interface UserData {
-  id: number;
-  email: string;
-  first_name: string;
-  last_name: string;
-  perfil: number;
+  id: number
+  email: string
+  first_name: string
+  last_name: string
 }
 
+// Assumindo que estes dados vêm do layout pai (Dashboard Layout)
 const userData = inject<Ref<UserData | null>>('userData')
 const userPending = inject<Ref<boolean>>('pendingData')
+
+const getIniciais = (first: string, last: string) => {
+  return (first?.[0] || '') + (last?.[0] || '').toUpperCase()
+}
 </script>
-
-<style scoped>
-/* Estilos Base dos Cartões */
-.nav-card {
-  @apply relative bg-white dark:bg-gray-800 rounded-[2rem] p-8 
-         border border-stone-100 dark:border-gray-700 shadow-sm 
-         hover:shadow-xl hover:-translate-y-2 transition-all duration-300 ease-out
-         flex flex-col gap-6 cursor-pointer overflow-hidden;
-}
-
-/* Ícone com Fundo Colorido */
-.card-icon-bg {
-  @apply w-16 h-16 rounded-2xl flex items-center justify-center mb-2 transition-transform duration-300 group-hover:scale-110;
-}
-
-/* Tipografia */
-.card-title {
-  @apply text-xl font-bold text-gray-800 dark:text-white mb-2;
-}
-
-.card-desc {
-  @apply text-sm text-stone-500 dark:text-gray-400 font-medium leading-relaxed;
-}
-</style>

@@ -1,129 +1,185 @@
 <template>
-  <div class="p-6 space-y-6 dark:text-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    
     <!-- Cabeçalho -->
-    <div class="flex justify-between items-center">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
       <div>
-        <h1 class="text-3xl font-bold">Gestão de Quartos</h1>
-        <p class="text-gray-500">Administração de blocos, vagas e ocupação física.</p>
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Gestão de Quartos</h1>
+        <p class="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">Administração de blocos, vagas e ocupação física.</p>
       </div>
-      <button @click="openModal()" class="btn-primary flex items-center gap-2">
-        <BootstrapIcon name="plus-lg" /> Novo Quarto
+      <button @click="openModal()" class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center gap-2 min-h-[44px]">
+        <BootstrapIcon name="plus-lg" class="w-4 h-4" />
+        Novo Quarto
       </button>
     </div>
 
     <!-- Filtros -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-      <input v-model="filters.search" type="text" placeholder="Pesquisar número ou bloco..." class="input" @input="fetchQuartos" />
-      <select v-model="filters.genero" class="input" @change="fetchQuartos">
-        <option value="">Todos os Géneros</option>
-        <option value="M">Masculino</option>
-        <option value="F">Feminino</option>
-      </select>
-      <select v-model="filters.estado" class="input" @change="fetchQuartos">
-        <option value="">Todos os Estados</option>
-        <option value="Activo">Activo</option>
-        <option value="Manutenção">Manutenção</option>
-        <option value="Inactivo">Inactivo</option>
-      </select>
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <input 
+          v-model="filters.search" 
+          type="text" 
+          placeholder="Pesquisar número ou bloco..." 
+          class="input" 
+          @input="fetchQuartos" 
+        />
+        <select v-model="filters.genero" class="input" @change="fetchQuartos">
+          <option value="">Todos os Géneros</option>
+          <option value="M">Masculino</option>
+          <option value="F">Feminino</option>
+        </select>
+        <select v-model="filters.estado" class="input" @change="fetchQuartos">
+          <option value="">Todos os Estados</option>
+          <option value="Activo">Activo</option>
+          <option value="Manutenção">Manutenção</option>
+          <option value="Inactivo">Inactivo</option>
+        </select>
+      </div>
     </div>
 
-    <!-- Tabela de quartos -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-      <table class="w-full text-left border-collapse">
-        <thead class="bg-gray-50 dark:bg-gray-700">
-          <tr>
-            <th class="p-4 font-semibold">Quarto / Bloco</th>
-            <th class="p-4 font-semibold">Género</th>
-            <th class="p-4 font-semibold">Capacidade</th>
-            <th class="p-4 font-semibold">Ocupação</th>
-            <th class="p-4 font-semibold">Estado</th>
-            <th class="p-4 font-semibold text-right">Acções</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="quarto in quartos" :key="quarto.id" class="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750">
-            <td class="p-4">
-              <span class="font-bold">#{{ quarto.numero }}</span>
-              <div class="text-xs text-gray-500">{{ quarto.bloco }}</div>
-            </td>
-            <td class="p-4">
-              <span :class="quarto.genero_permitido === 'M' ? 'text-blue-500' : 'text-pink-500'">
-                {{ quarto.genero_permitido === 'M' ? '♂ Masculino' : '♀ Feminino' }}
-              </span>
-            </td>
-            <td class="p-4">{{ quarto.capacidade_maxima }} camas</td>
-            <td class="p-4">
-              <div class="flex items-center gap-2">
-                <div class="w-16 bg-gray-200 rounded-full h-2">
-                  <div class="bg-blue-600 h-2 rounded-full" :style="{ width: ocupacaoPercent(quarto) + '%' }"></div>
-                </div>
-                <span class="text-sm">{{ quarto.ocupacao_atual }}/{{ quarto.capacidade_maxima }}</span>
-              </div>
-            </td>
-            <td class="p-4">
-              <span :class="statusClass(quarto.estado)" class="px-2 py-1 rounded-full text-xs font-medium">
+    <!-- Loading -->
+    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-for="i in 6" :key="i" class="h-40 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-xl"></div>
+    </div>
+
+    <!-- Grid de Cards -->
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+      
+      <div 
+        v-for="quarto in quartos" 
+        :key="quarto.id" 
+        class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col"
+      >
+        <!-- Cabeçalho do card -->
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-lg font-bold text-slate-900 dark:text-white">Bloco {{ quarto.bloco }}</span>
+              <span :class="[
+                'px-2 py-0.5 rounded-md text-xs font-medium border',
+                statusClass(quarto.estado)
+              ]">
                 {{ quarto.estado }}
               </span>
-            </td>
-            <td class="p-4 text-right space-x-2">
-              <button @click="openModal(quarto)" class="text-blue-600 hover:text-blue-800">Editar</button>
-              <button @click="confirmDelete(quarto)" class="text-red-600 hover:text-red-800">Apagar</button>
-            </td>
-          </tr>
-          <tr v-if="quartos.length === 0 && !loading">
-            <td colspan="6" class="p-8 text-center text-gray-500">Nenhum quarto encontrado.</td>
-          </tr>
-        </tbody>
-      </table>
-      <div v-if="loading" class="p-8 text-center text-gray-500">Carregando...</div>
+            </div>
+          </div>
+          <div :class="[
+            'h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium',
+            quarto.genero_permitido === 'M' 
+              ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' 
+              : 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
+          ]">
+            {{ quarto.genero_permitido === 'M' ? '♂' : '♀' }}
+          </div>
+        </div>
+
+        <!-- Capacidade e Ocupação -->
+        <div class="mb-4 flex-1">
+          <div class="flex items-center justify-between text-sm mb-1">
+            <span class="text-slate-600 dark:text-slate-300">Capacidade</span>
+            <span class="font-medium text-slate-900 dark:text-white">{{ quarto.capacidade_maxima }} camas</span>
+          </div>
+          <div class="flex items-center justify-between text-sm mb-2">
+            <span class="text-slate-600 dark:text-slate-300">Ocupação</span>
+            <span class="font-medium text-slate-900 dark:text-white">{{ quarto.ocupacao_atual }}/{{ quarto.capacidade_maxima }}</span>
+          </div>
+          
+          <!-- Barra de progresso -->
+          <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mb-2">
+            <div 
+              class="h-2 rounded-full transition-all"
+              :class="ocupacaoPercent(quarto) >= 90 ? 'bg-rose-500' : (ocupacaoPercent(quarto) >= 70 ? 'bg-amber-500' : 'bg-emerald-500')"
+              :style="{ width: ocupacaoPercent(quarto) + '%' }"
+            ></div>
+          </div>
+          
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            <span v-if="quarto.capacidade_maxima - quarto.ocupacao_atual > 0" class="text-emerald-600 dark:text-emerald-400 font-medium">
+              {{ quarto.capacidade_maxima - quarto.ocupacao_atual }} vagas disponíveis
+            </span>
+            <span v-else class="text-rose-600 dark:text-rose-400 font-medium">Lotado</span>
+          </p>
+        </div>
+
+        <!-- Ações -->
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <button 
+            @click="openModal(quarto)" 
+            class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            Editar
+          </button>
+          <button 
+            @click="confirmDelete(quarto)" 
+            class="px-3 py-1.5 rounded-lg text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+          >
+            Apagar
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Mensagem quando não há resultados -->
+    <div v-if="!loading && quartos.length === 0" class="p-16 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+      <BootstrapIcon name="door-closed" class="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+      <p class="text-slate-500 dark:text-slate-400 font-medium">Nenhum quarto encontrado com estes filtros.</p>
     </div>
 
     <!-- Modal de criação/edição -->
-     <ClientOnly>
-    <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
-        <h2 class="text-xl font-bold mb-4">{{ editingId ? 'Editar Quarto' : 'Novo Quarto' }}</h2>
-        <form @submit.prevent="saveQuarto" class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="label text-xs">Número *</label>
-              <input v-model="roomForm.numero" type="text" class="input" required />
+    <ClientOnly>
+      <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="closeModal">
+        <div class="bg-white dark:bg-slate-900 rounded-xl p-6 w-full max-w-md shadow-xl border border-slate-200 dark:border-slate-800">
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">
+            {{ editingId ? 'Editar Quarto' : 'Novo Quarto' }}
+          </h2>
+          <form @submit.prevent="saveQuarto" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="label">Número *</label>
+                <input v-model="roomForm.numero" type="text" class="input" required />
+              </div>
+              <div>
+                <label class="label">Bloco *</label>
+                <input v-model="roomForm.bloco" type="text" class="input" required />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="label">Capacidade Máxima *</label>
+                <input v-model.number="roomForm.capacidade_maxima" type="number" min="1" class="input" required />
+              </div>
+              <div>
+                <label class="label">Género *</label>
+                <select v-model="roomForm.genero_permitido" class="input" required>
+                  <option value="M">Masculino</option>
+                  <option value="F">Feminino</option>
+                </select>
+              </div>
             </div>
             <div>
-              <label class="label text-xs">Bloco *</label>
-              <input v-model="roomForm.bloco" type="text" class="input" required />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="label text-xs">Capacidade Máxima *</label>
-              <input v-model.number="roomForm.capacidade_maxima" type="number" min="1" class="input" required />
-            </div>
-            <div>
-              <label class="label text-xs">Género *</label>
-              <select v-model="roomForm.genero_permitido" class="input" required>
-                <option value="M">Masculino</option>
-                <option value="F">Feminino</option>
+              <label class="label">Estado</label>
+              <select v-model="roomForm.estado" class="input">
+                <option value="Activo">Activo</option>
+                <option value="Manutenção">Em Manutenção</option>
+                <option value="Inactivo">Inactivo</option>
               </select>
             </div>
-          </div>
-          <div>
-            <label class="label text-xs">Estado</label>
-            <select v-model="roomForm.estado" class="input">
-              <option value="Activo">Activo</option>
-              <option value="Manutenção">Em Manutenção</option>
-              <option value="Inactivo">Inactivo</option>
-            </select>
-          </div>
-          <div class="flex justify-end gap-3 mt-6">
-            <button type="button" @click="closeModal" class="px-4 py-2 text-gray-500">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="saving">
-              {{ saving ? 'A guardar...' : 'Guardar Alterações' }}
-            </button>
-          </div>
-        </form>
+            <div class="flex justify-end gap-3 mt-6 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button type="button" @click="closeModal" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                Cancelar
+              </button>
+              <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors disabled:opacity-60" :disabled="saving">
+                <span v-if="saving" class="inline-flex items-center gap-2">
+                  <span class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                  A guardar...
+                </span>
+                <span v-else>Guardar</span>
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
     </ClientOnly>
   </div>
 </template>
@@ -146,14 +202,12 @@ const saving = ref(false)
 const showModal = ref(false)
 const editingId = ref<number | null>(null)
 
-// Estado dos filtros
 const filters = reactive({
   search: '',
   genero: '',
   estado: ''
 })
 
-// Formulário do quarto
 const roomForm = ref<Quarto>({
   numero: '',
   bloco: '',
@@ -163,7 +217,6 @@ const roomForm = ref<Quarto>({
   estado: 'Activo'
 })
 
-// Carregar lista de quartos com filtros
 async function fetchQuartos() {
   loading.value = true
   try {
@@ -172,7 +225,6 @@ async function fetchQuartos() {
     if (filters.estado) params.append('estado', filters.estado)
     if (filters.search) params.append('search', filters.search)
     const response = await api<any>(`/admin/quartos/?${params.toString()}`)
-    // Se vier paginado, extrai results; senão, usa como array
     quartos.value = response.results ?? response
   } catch (error) {
     console.error(error)
@@ -182,7 +234,6 @@ async function fetchQuartos() {
   }
 }
 
-// Abrir modal para criar ou editar
 function openModal(quarto: Quarto | null = null) {
   if (quarto) {
     editingId.value = quarto.id || null
@@ -204,7 +255,6 @@ function openModal(quarto: Quarto | null = null) {
 function closeModal() {
   showModal.value = false
   editingId.value = null
-  // Opcional: resetar formulário para valores padrão
   roomForm.value = {
     numero: '',
     bloco: '',
@@ -215,13 +265,11 @@ function closeModal() {
   }
 }
 
-// Salvar (criar ou atualizar)
 async function saveQuarto() {
   saving.value = true
   try {
     const url = editingId.value ? `/admin/quartos/${editingId.value}/` : '/admin/quartos/'
     const method = editingId.value ? 'PATCH' : 'POST'
-    // Não enviar ocupacao_atual – o backend já ignora
     const payload = { ...roomForm.value }
     delete payload.ocupacao_atual
     await api(url, { method, body: payload })
@@ -236,7 +284,6 @@ async function saveQuarto() {
   }
 }
 
-// Excluir quarto
 async function confirmDelete(quarto: Quarto) {
   if (!confirm(`Deseja apagar o quarto ${quarto.numero}?`)) return
   try {
@@ -249,17 +296,15 @@ async function confirmDelete(quarto: Quarto) {
   }
 }
 
-// Helper para calcular percentagem de ocupação
 function ocupacaoPercent(quarto: Quarto): number {
   return (quarto.ocupacao_atual / quarto.capacidade_maxima) * 100
 }
 
-// Classes CSS para estado do quarto
 function statusClass(estado: string) {
   return {
-    'bg-green-100 text-green-700': estado === 'Activo',
-    'bg-orange-100 text-orange-700': estado === 'Manutenção',
-    'bg-red-100 text-red-700': estado === 'Inactivo'
+    'Activo': 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30',
+    'Manutenção': 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30',
+    'Inactivo': 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
   }[estado] || ''
 }
 
@@ -268,12 +313,9 @@ onMounted(fetchQuartos)
 
 <style scoped>
 .label {
-  @apply block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1;
+  @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1;
 }
 .input {
-  @apply w-full px-4 py-2 border rounded-lg shadow-sm bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-2 focus:ring-blue-500 transition-all;
-}
-.btn-primary {
-  @apply px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 dark:bg-blue-500 shadow-sm disabled:opacity-50 transition-all;
+  @apply w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors;
 }
 </style>

@@ -1,105 +1,133 @@
 <template>
-  <div class="space-y-8 dark:text-white max-w-8xl mx-auto p-4 md:p-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
     
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <!-- Cabeçalho -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">Gestão Financeira</h1>
-        <p class="text-stone-500 dark:text-gray-400 mt-1 text-lg">Controlo de mensalidades e fluxos de caixa.</p>
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Gestão Financeira</h1>
+        <p class="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">Controlo de mensalidades e fluxos de caixa.</p>
       </div>
 
-      <div class="flex gap-3 w-full md:w-auto">
-        <NuxtLink to="/dashboard/admin/finance/generate" class="flex-1 md:flex-none px-6 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg">
-          <BootstrapIcon name="plus-circle" /> Gerar Lote
-        </NuxtLink>
-      </div>
+      <NuxtLink 
+        to="/dashboard/admin/finance/generate" 
+        class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center gap-2 min-h-[44px]"
+      >
+        <BootstrapIcon name="plus-circle" class="w-4 h-4" />
+        Gerar Lote
+      </NuxtLink>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
+    <!-- Cards de Estatísticas -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-6">
+      <!-- Arrecadado -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
         <div class="flex items-center gap-4">
-          <div class="p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl text-emerald-600">
-            <BootstrapIcon name="cash-coin" class="w-8 h-8" />
+          <div class="h-12 w-12 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <BootstrapIcon name="cash-coin" class="w-6 h-6" />
           </div>
           <div>
-            <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Arrecadado (Mês)</p>
-<h3 class="text-2xl font-bold">{{ formatMoeda(stats?.total_arrecadado_mes || 0) }}</h3>          </div>
+            <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Arrecadado (Mês)</p>
+            <h3 class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">{{ formatMoeda(stats?.total_arrecadado_mes || 0) }}</h3>
+          </div>
         </div>
       </div>
 
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
+      <!-- Pendentes -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
         <div class="flex items-center gap-4">
-          <div class="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-2xl text-amber-600">
-            <BootstrapIcon name="hourglass-split" class="w-8 h-8" />
+          <div class="h-12 w-12 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <BootstrapIcon name="hourglass-split" class="w-6 h-6" />
           </div>
           <div>
-            <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Pendentes</p>
-<h3 class="text-2xl font-bold">{{ stats?.total_estudantes_pendentes || 0 }} <span class="text-sm font-normal text-stone-400">Alunos</span></h3>          </div>
+            <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Pendentes</p>
+            <h3 class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">
+              {{ stats?.total_estudantes_pendentes || 0 }} <span class="text-sm font-normal text-slate-400">Alunos</span>
+            </h3>
+          </div>
         </div>
       </div>
 
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm">
+      <!-- Em Atraso -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
         <div class="flex items-center gap-4">
-          <div class="p-3 bg-rose-50 dark:bg-rose-900/30 rounded-2xl text-rose-600">
-            <BootstrapIcon name="exclamation-circle" class="w-8 h-8" />
+          <div class="h-12 w-12 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+            <BootstrapIcon name="exclamation-circle" class="w-6 h-6" />
           </div>
           <div>
-                  <p class="text-stone-500 text-xs font-bold uppercase tracking-wider">Em Atraso</p>
-      <h3 class="text-2xl font-bold text-rose-500">{{ stats?.total_estudantes_atraso || 0 }}</h3>          </div>
+            <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Em Atraso</p>
+            <h3 class="text-xl md:text-2xl font-bold text-rose-600 dark:text-rose-400">{{ stats?.total_estudantes_atraso || 0 }}</h3>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="bg-stone-50 dark:bg-gray-800/50 p-4 rounded-[1.5rem] border border-stone-100 dark:border-gray-700 flex flex-col md:flex-row gap-4">
-      <div class="flex-1 relative">
-        <BootstrapIcon name="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
-        <input 
-          v-model="pesquisa" 
-          type="text" 
-          placeholder="Pesquisar por aluno ou número..." 
-          class="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-200"
-        />
+    <!-- Filtros -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
+      <div class="flex flex-col md:flex-row gap-3">
+        <div class="flex-1 relative">
+          <BootstrapIcon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <input 
+            v-model="pesquisa" 
+            type="text" 
+            placeholder="Pesquisar por aluno ou número..." 
+            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          />
+        </div>
+        <select 
+          v-model="filtroEstado" 
+          class="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer md:w-48"
+        >
+          <option :value="null">Todos os Estados</option>
+          <option value="Pendente">Pendentes</option>
+          <option value="Pago">Pagos</option>
+          <option value="Atraso">Em Atraso</option>
+        </select>
       </div>
-      <select v-model="filtroEstado" class="bg-white dark:bg-gray-800 border border-stone-200 dark:border-gray-700 rounded-xl px-4 py-3 outline-none">
-        <option :value="null">Todos os Estados</option>
-        <option value="Pendente">Pendentes</option>
-        <option value="Pago">Pagos</option>
-        <option value="Atraso">Em Atraso</option>
-      </select>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-[2rem] border border-stone-100 dark:border-gray-700 overflow-hidden shadow-sm">
-      <table class="w-full text-left border-collapse">
-        <thead class="bg-stone-50 dark:bg-gray-700/50">
-          <tr>
-            <th class="p-5 text-xs font-bold text-stone-400 uppercase">Estudante</th>
-            <th class="p-5 text-xs font-bold text-stone-400 uppercase">Mês Ref.</th>
-            <th class="p-5 text-xs font-bold text-stone-400 uppercase">Estado</th>
-            <th class="p-5 text-xs font-bold text-stone-400 uppercase">Ação</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y dark:divide-gray-700">
-          <tr v-for="item in (mensalidades?.results || mensalidades || [])" :key="item.id" class="hover:bg-stone-50/50 dark:hover:bg-gray-700/30 transition-colors">
-            <td class="p-5 font-bold text-gray-800 dark:text-white">
-               {{ item.nome_estudante }}
-            </td>
-            <td class="p-5 text-sm text-stone-500 capitalize">{{ formatMes(item.mes_referencia) }}</td>
-            <td class="p-5">
-              <span :class="['px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border', getStatusBadge(item.estado)]">
-                {{ item.estado }}
-              </span>
-            </td>
-            <td class="p-5">
-              <NuxtLink 
-                :to="`/dashboard/admin/finance/confirm/${item.id}`"
-                class="text-xs font-bold text-rose-500 hover:text-rose-700 underline"
-              >
-                Detalhes / Confirmar
-              </NuxtLink>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Lista de Mensalidades em Grid de Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div 
+        v-for="item in (mensalidades?.results || mensalidades || [])" 
+        :key="item.id" 
+        class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col"
+      >
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <h3 class="font-semibold text-slate-900 dark:text-white">{{ item.nome_estudante }}</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ formatMes(item.mes_referencia) }}</p>
+          </div>
+          <span :class="[
+            'px-2.5 py-0.5 rounded-md text-xs font-medium border',
+            getStatusBadge(item.estado)
+          ]">
+            {{ item.estado }}
+          </span>
+        </div>
+
+        <div class="flex-1">
+          <p class="text-sm text-slate-600 dark:text-slate-300 mb-1">{{ item.tipo || 'Mensalidade' }}</p>
+          <p class="text-lg font-bold text-slate-900 dark:text-white">{{ formatMoeda(item.valor_pago || 25000) }}</p>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <NuxtLink 
+            :to="`/dashboard/admin/finance/confirm/${item.id}`"
+            class="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Detalhes / Confirmar
+            <BootstrapIcon name="arrow-right" class="w-4 h-4" />
+          </NuxtLink>
+        </div>
+      </div>
     </div>
+
+    <!-- Mensagem quando não há resultados -->
+    <div v-if="(mensalidades?.results || mensalidades || []).length === 0" class="p-16 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 mt-6">
+      <BootstrapIcon name="cash-stack" class="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+      <p class="text-slate-500 dark:text-slate-400 font-medium">Nenhuma mensalidade encontrada com estes filtros.</p>
+    </div>
+
   </div>
 </template>
 
@@ -114,7 +142,7 @@ const { data: dashboard } = await useAsyncData('admin-dashboard', () => api<any>
 const stats = computed(() => dashboard.value?.finance)
 
 // 2. Buscar mensalidades (listagem)
-const { data: mensalidades, refresh } = await useAsyncData(
+const { data: mensalidades } = await useAsyncData(
   'admin-fin-list',
   () => {
     const params: any = {}
@@ -127,9 +155,9 @@ const { data: mensalidades, refresh } = await useAsyncData(
 
 // Helpers
 const getStatusBadge = (estado: string) => {
-  if (estado === 'Pago') return 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300'
-  if (estado === 'Atraso') return 'bg-rose-50 text-rose-700 border-rose-100'
-  return 'bg-amber-50 text-amber-700 border-amber-100'
+  if (estado === 'Pago') return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30'
+  if (estado === 'Atraso') return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800/30'
+  return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30'
 }
 
 const formatMoeda = (valor: any) => new Intl.NumberFormat('pt-MZ', { style: 'currency', currency: 'MZN' }).format(Number(valor))

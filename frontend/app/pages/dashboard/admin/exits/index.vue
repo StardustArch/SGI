@@ -1,105 +1,156 @@
 <template>
-  <div class="space-y-8 dark:text-white max-w-7xl mx-auto p-4 md:p-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
     
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <!-- Cabeçalho -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">Triagem de Saídas</h1>
-        <p class="text-stone-500 dark:text-gray-400 mt-1">Analise e dê o parecer inicial aos pedidos de saída dos internos.</p>
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Triagem de Saídas</h1>
+        <p class="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">Analise e dê o parecer inicial aos pedidos de saída dos internos.</p>
       </div>
 
-      <div class="bg-stone-100 dark:bg-gray-800 p-1 rounded-xl flex gap-1">
+      <!-- Filtros -->
+      <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
         <button 
           @click="filtroEstado = 'Pendente'; refresh()"
-          :class="['px-4 py-2 text-xs font-bold rounded-lg transition-all', filtroEstado === 'Pendente' ? 'bg-white shadow-sm text-rose-600' : 'text-stone-500']"
+          :class="[
+            'px-4 sm:px-5 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap',
+            filtroEstado === 'Pendente' 
+              ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-white shadow-sm' 
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          ]"
         >
           Pendentes
         </button>
         <button 
           @click="filtroEstado = ''; refresh()"
-          :class="['px-4 py-2 text-xs font-bold rounded-lg transition-all', filtroEstado === null ? 'bg-white shadow-sm text-gray-800' : 'text-stone-500']"
+          :class="[
+            'px-4 sm:px-5 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap',
+            filtroEstado === '' 
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' 
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          ]"
         >
           Todos
         </button>
       </div>
     </div>
 
-    <div v-if="pending" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-       <div v-for="i in 4" :key="i" class="h-64 bg-stone-100 dark:bg-gray-800 animate-pulse rounded-[2rem]"></div>
+    <!-- Loading -->
+    <div v-if="pending" class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+      <div v-for="i in 4" :key="i" class="h-64 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-xl"></div>
     </div>
 
-    <div v-else-if="pedidos?.length === 0" class="text-center py-20 bg-stone-50 dark:bg-gray-800/50 rounded-[2rem] border border-dashed border-stone-200">
-        <BootstrapIcon name="check2-all" class="text-4xl text-emerald-500 mb-2" />
-        <p class="text-stone-500">Não há pedidos pendentes de análise.</p>
+    <!-- Empty state -->
+    <div v-else-if="pedidos?.length === 0" class="text-center py-16 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+      <BootstrapIcon name="check-circle" class="w-12 h-12 text-emerald-500 dark:text-emerald-400 mx-auto mb-3" />
+      <p class="text-slate-500 dark:text-slate-400 font-medium">Não há pedidos pendentes de análise.</p>
     </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Grid de Pedidos -->
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
       <div 
         v-for="pedido in pedidos" 
         :key="pedido.id"
-        class="bg-white dark:bg-gray-800 rounded-[2rem] border border-stone-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden"
+        class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden"
       >
+        <!-- Barra de status -->
         <div :class="['h-1.5 w-full', getStatusColor(pedido.estado)]"></div>
         
-        <div class="p-6 md:p-8 space-y-6">
-          <div class="flex justify-between items-start">
+        <div class="p-5 md:p-6 space-y-4">
+          <!-- Cabeçalho do card -->
+          <div class="flex flex-wrap justify-between items-start gap-3">
             <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-2xl bg-stone-50 dark:bg-gray-700 flex items-center justify-center font-bold text-rose-500 border border-stone-100">
-                {{ pedido.estudante_nome?.charAt(0) }}
+              <div class="h-12 w-12 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-semibold text-base border border-blue-100 dark:border-blue-800 shrink-0">
+                {{ pedido.estudante_nome?.charAt(0).toUpperCase() }}
               </div>
               <div>
-                <h3 class="font-bold text-lg leading-none">{{ pedido.estudante_nome }}</h3>
-                <p class="text-xs text-stone-400 mt-1">Submetido em: {{ formatDate(pedido.data_submissao) }}</p>
+                <h3 class="font-semibold text-slate-900 dark:text-white">{{ pedido.estudante_nome }}</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Submetido em: {{ formatDate(pedido.data_submissao) }}</p>
               </div>
             </div>
-            <span :class="['px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border', getStatusBadge(pedido.estado)]">
+            <span :class="[
+              'px-2.5 py-0.5 rounded-md text-xs font-medium border',
+              getStatusBadge(pedido.estado)
+            ]">
               {{ pedido.estado }}
             </span>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div class="bg-stone-50 dark:bg-gray-700/50 p-3 rounded-2xl border border-stone-100 text-center">
-              <p class="text-[10px] font-bold text-stone-400 uppercase">Saída</p>
-              <p class="font-bold text-rose-500">{{ formatDateShort(pedido.data_saida_pretendida) }}</p>
-            </div>
-            <div class="bg-stone-50 dark:bg-gray-700/50 p-3 rounded-2xl border border-stone-100 text-center">
-              <p class="text-[10px] font-bold text-stone-400 uppercase">Retorno</p>
-              <p class="font-bold text-emerald-500">{{ formatDateShort(pedido.data_retorno_pretendida) }}</p>
+          <!-- Informações de destino/transporte -->
+          <div v-if="pedido.destino || pedido.cidade_destino || pedido.meio_transporte" class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              <div v-if="pedido.cidade_destino">
+                <span class="text-slate-500 dark:text-slate-400 font-medium">Cidade:</span>
+                <span class="font-medium ml-1 text-slate-700 dark:text-slate-300">{{ pedido.cidade_destino }}</span>
+              </div>
+              <div v-if="pedido.destino">
+                <span class="text-slate-500 dark:text-slate-400 font-medium">Destino:</span>
+                <span class="font-medium ml-1 truncate max-w-[150px] text-slate-700 dark:text-slate-300" :title="pedido.destino">{{ pedido.destino }}</span>
+              </div>
+              <div v-if="pedido.meio_transporte">
+                <span class="text-slate-500 dark:text-slate-400 font-medium">Transporte:</span>
+                <span class="font-medium ml-1 text-slate-700 dark:text-slate-300">{{ pedido.meio_transporte }}</span>
+              </div>
             </div>
           </div>
 
-          <div class="bg-stone-50 dark:bg-gray-700/30 p-4 rounded-2xl border border-stone-100 italic text-sm text-stone-600 dark:text-gray-300">
+          <!-- Datas -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
+              <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Saída</p>
+              <p class="font-semibold text-rose-600 dark:text-rose-400">{{ formatDateShort(pedido.data_saida_pretendida) }}</p>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
+              <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Retorno</p>
+              <p class="font-semibold text-emerald-600 dark:text-emerald-400">{{ formatDateShort(pedido.data_retorno_pretendida) }}</p>
+            </div>
+          </div>
+
+          <!-- Motivo -->
+          <div class="bg-slate-50 dark:bg-slate-800/30 p-3 rounded-lg border border-slate-200 dark:border-slate-700 italic text-sm text-slate-600 dark:text-slate-300">
             "{{ pedido.motivo }}"
           </div>
 
-          <div v-if="pedido.estado === 'Pendente'" class="flex flex-col gap-3">
+          <!-- Ações (apenas para pedidos pendentes) -->
+          <div v-if="pedido.estado === 'Pendente'" class="flex flex-col gap-3 pt-2">
             <textarea 
               v-model="observacoes[pedido.id]" 
-              placeholder="Adicionar observação ou motivo de rejeição..."
-              class="w-full text-xs p-3 bg-stone-50 dark:bg-gray-900 border border-stone-100 rounded-xl focus:ring-2 focus:ring-rose-200 outline-none"
+              placeholder="Motivo da rejeição (obrigatório se rejeitar) ou observação administrativa..."
+              class="w-full text-sm p-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              rows="2"
             ></textarea>
             
             <div class="grid grid-cols-2 gap-3">
               <button 
                 @click="decidirPedido(pedido.id, 'Rejeitado')"
-                class="py-3 rounded-xl border border-stone-200 font-bold text-xs hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                class="py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 font-medium text-sm text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:border-rose-200 dark:hover:border-rose-800 transition-colors"
               >
                 Rejeitar Pedido
               </button>
               <button 
                 @click="decidirPedido(pedido.id, 'Aguardando_Encarregado')"
-                class="py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-xs shadow-lg hover:opacity-90 transition-all"
+                class="py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors"
               >
                 Aprovar (Fase 1)
               </button>
             </div>
+            <button 
+              @click="decidirPedido(pedido.id, 'Autorizado', true)"
+              class="py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition-colors"
+            >
+              Autorizar (Contacto Telefónico)
+            </button>
           </div>
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, reactive, computed } from 'vue'
+
 const { api } = useApi()
 
 const filtroEstado = ref('Pendente')
@@ -119,21 +170,32 @@ const pedidos = computed(() => {
 })
 
 // 2. Ação de Aprovar/Rejeitar
-async function decidirPedido(id: number, novoEstado: string) {
+async function decidirPedido(id: number, novoEstado: string, aprovacaoDireta = false) {
   const obs = observacoes[id] || ""
   
   if (novoEstado === 'Rejeitado' && !obs) {
-    alert("Por favor, indique o motivo da rejeição na observação.")
+    alert("Por favor, indique o motivo da rejeição.")
+    return
+  }
+  if (aprovacaoDireta && !obs) {
+    alert("Por favor, indique na observação que o encarregado foi contactado.")
     return
   }
 
   try {
+    const body: any = {
+      estado: novoEstado,
+    }
+    
+    if (novoEstado === 'Rejeitado') {
+      body.motivo_rejeicao = obs
+    } else if (novoEstado === 'Aguardando_Encarregado' && obs) {
+      body.observacao_admin = obs
+    }
+    
     await api(`/admin/pedidos-saida/${id}/`, {
       method: 'PATCH',
-      body: {
-        estado: novoEstado,
-        observacao_admin: obs
-      }
+      body
     })
     delete observacoes[id]
     refresh()
@@ -145,16 +207,21 @@ async function decidirPedido(id: number, novoEstado: string) {
 
 // Helpers
 const getStatusColor = (e: string) => {
-  if (e === 'Autorizado') return 'bg-emerald-500'
-  if (e === 'Rejeitado') return 'bg-rose-500'
-  if (e === 'Aguardando_Encarregado') return 'bg-amber-400'
-  return 'bg-blue-400'
+  const map: Record<string, string> = {
+    'Autorizado': 'bg-emerald-500',
+    'Rejeitado': 'bg-rose-500',
+    'Aguardando_Encarregado': 'bg-amber-500',
+  }
+  return map[e] || 'bg-blue-500'
 }
 
 const getStatusBadge = (e: string) => {
-  if (e === 'Autorizado') return 'bg-emerald-50 text-emerald-700'
-  if (e === 'Rejeitado') return 'bg-rose-50 text-rose-700'
-  return 'bg-stone-100 text-stone-600'
+  const map: Record<string, string> = {
+    'Autorizado': 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30',
+    'Rejeitado': 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800/30',
+    'Aguardando_Encarregado': 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30',
+  }
+  return map[e] || 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400'
 }
 
 const formatDate = (d: string) => new Date(d).toLocaleString('pt-PT')

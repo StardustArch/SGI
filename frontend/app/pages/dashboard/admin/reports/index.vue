@@ -1,122 +1,129 @@
 <template>
-  <div class="space-y-8 dark:text-white max-w-8xl mx-auto p-4 md:p-8">
-    <div class="flex justify-between items-center">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    
+    <!-- Cabeçalho -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">Relatórios & Insights</h1>
-        <p class="text-stone-500 dark:text-gray-400 mt-1 text-lg">
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Relatórios & Insights</h1>
+        <p class="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">
           {{ descricaoPerfil }}
         </p>
       </div>
-      <div class="flex gap-3">
-        <button v-if="showExport" @click="exportar('xlsx')" class="px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 flex items-center gap-2">
-          <BootstrapIcon name="file-excel-fill" /> Excel
+      <div v-if="showExport" class="flex gap-3">
+        <button @click="exportar('xlsx')" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors flex items-center gap-2 min-h-[44px]">
+          <BootstrapIcon name="file-excel" class="w-4 h-4" />
+          Excel
         </button>
-        <button v-if="showExport" @click="exportar('pdf')" class="px-4 py-2 bg-rose-500 text-white rounded-xl text-sm font-bold hover:bg-rose-600 flex items-center gap-2">
-          <BootstrapIcon name="file-pdf-fill" /> PDF
+        <button @click="exportar('pdf')" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors flex items-center gap-2 min-h-[44px]">
+          <BootstrapIcon name="file-pdf" class="w-4 h-4" />
+          PDF
         </button>
       </div>
     </div>
 
-    <!-- Cards de sumário financeiro (Financeiro, Gestor, Suporte) -->
-    <div v-if="showFinanceiro" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="stat-card bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100">
-        <p class="stat-label text-emerald-600">Receita Arrecadada (Mês)</p>
-        <h3 class="stat-value">{{ formatMoeda(dashboardData?.finance?.total_arrecadado_mes || 0) }}</h3>
+    <!-- Cards de sumário financeiro -->
+    <div v-if="showFinanceiro" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-6">
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Receita Arrecadada (Mês)</p>
+        <h3 class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">{{ formatMoeda(dashboardData?.finance?.total_arrecadado_mes || 0) }}</h3>
       </div>
-      <div class="stat-card bg-amber-50 dark:bg-amber-900/10 border-amber-100">
-        <p class="stat-label text-amber-600">Estudantes Pendentes</p>
-        <h3 class="stat-value">{{ dashboardData?.finance?.total_estudantes_pendentes || 0 }}</h3>
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Estudantes Pendentes</p>
+        <h3 class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.finance?.total_estudantes_pendentes || 0 }}</h3>
       </div>
-      <div class="stat-card bg-rose-50 dark:bg-rose-900/10 border-rose-100">
-        <p class="stat-label text-rose-600">Em Atraso</p>
-        <h3 class="stat-value text-rose-500">{{ dashboardData?.finance?.total_estudantes_atraso || 0 }}</h3>
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Em Atraso</p>
+        <h3 class="text-xl md:text-2xl font-bold text-rose-600 dark:text-rose-400">{{ dashboardData?.finance?.total_estudantes_atraso || 0 }}</h3>
       </div>
     </div>
 
-    <!-- Gráficos disciplinares (Disciplinar, Gestor, Suporte) -->
-    <div v-if="showDisciplinar" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <div class="bg-white dark:bg-gray-800 rounded-[2rem] p-8 border border-stone-100 dark:border-gray-700 shadow-sm">
-        <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
-          <BootstrapIcon name="shield-lock-fill" class="text-rose-500" />
+    <!-- Gráficos disciplinares -->
+    <div v-if="showDisciplinar" class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6 mb-6">
+      <!-- Top Infratores -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 md:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <h3 class="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <BootstrapIcon name="shield-exclamation" class="w-5 h-5 text-rose-500" />
           Top 10 Infratores (Mês)
         </h3>
-        <div v-if="dashboardData?.discipline?.top_infratores?.length" class="space-y-4">
-          <div v-for="(item, idx) in dashboardData.discipline.top_infratores.slice(0,5)" :key="idx" class="flex items-center gap-4">
-            <span class="text-sm font-bold text-stone-300">#{{ idx+1 }}</span>
+        <div v-if="dashboardData?.discipline?.top_infratores?.length" class="space-y-3">
+          <div v-for="(item, idx) in dashboardData.discipline.top_infratores.slice(0,5)" :key="idx" class="flex items-center gap-3">
+            <span class="text-sm font-medium text-slate-400 dark:text-slate-500 w-6">#{{ idx+1 }}</span>
             <div class="flex-1">
               <div class="flex justify-between mb-1">
-                <span class="text-sm font-bold">{{ item.estudante__nome_completo }}</span>
-                <span class="text-xs font-bold text-rose-500">{{ item.total }} sanções</span>
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{{ item.estudante__nome_completo }}</span>
+                <span class="text-xs font-medium text-rose-600 dark:text-rose-400">{{ item.total }} sanções</span>
               </div>
-              <div class="w-full bg-stone-100 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
-                <div class="bg-rose-500 h-full" :style="{ width: (item.total * 8) + '%' }"></div>
+              <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div class="bg-rose-500 h-full rounded-full" :style="{ width: Math.min(item.total * 8, 100) + '%' }"></div>
               </div>
             </div>
           </div>
         </div>
-        <p v-else class="text-stone-400 text-sm">Nenhuma sanção registada este mês.</p>
+        <p v-else class="text-slate-500 dark:text-slate-400 text-sm text-center py-6">Nenhuma sanção registada este mês.</p>
       </div>
 
-      <div class="bg-white dark:bg-gray-800 rounded-[2rem] p-8 border border-stone-100 dark:border-gray-700 shadow-sm">
-        <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
-          <BootstrapIcon name="calendar-x-fill" class="text-amber-500" />
+      <!-- Top Ausências -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 md:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <h3 class="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <BootstrapIcon name="calendar-x" class="w-5 h-5 text-amber-500" />
           Top 10 Ausências (Estudo)
         </h3>
-        <div v-if="dashboardData?.discipline?.top_ausentes?.length" class="space-y-4">
-          <div v-for="(item, idx) in dashboardData.discipline.top_ausentes.slice(0,5)" :key="idx" class="flex items-center gap-4">
-            <span class="text-sm font-bold text-stone-300">#{{ idx+1 }}</span>
+        <div v-if="dashboardData?.discipline?.top_ausentes?.length" class="space-y-3">
+          <div v-for="(item, idx) in dashboardData.discipline.top_ausentes.slice(0,5)" :key="idx" class="flex items-center gap-3">
+            <span class="text-sm font-medium text-slate-400 dark:text-slate-500 w-6">#{{ idx+1 }}</span>
             <div class="flex-1">
               <div class="flex justify-between mb-1">
-                <span class="text-sm font-bold">{{ item.estudante__nome_completo }}</span>
-                <span class="text-xs font-bold text-amber-500">{{ item.total }} faltas</span>
+                <span class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">{{ item.estudante__nome_completo }}</span>
+                <span class="text-xs font-medium text-amber-600 dark:text-amber-400">{{ item.total }} faltas</span>
               </div>
-              <div class="w-full bg-stone-100 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
-                <div class="bg-amber-500 h-full" :style="{ width: (item.total * 5) + '%' }"></div>
+              <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div class="bg-amber-500 h-full rounded-full" :style="{ width: Math.min(item.total * 5, 100) + '%' }"></div>
               </div>
             </div>
           </div>
         </div>
-        <p v-else class="text-stone-400 text-sm">Nenhuma ausência registada este mês.</p>
+        <p v-else class="text-slate-500 dark:text-slate-400 text-sm text-center py-6">Nenhuma ausência registada este mês.</p>
       </div>
     </div>
 
-    <!-- Resumo de pedidos de saída (Gestor e Suporte) -->
-    <div v-if="showPedidos" class="bg-white dark:bg-gray-800 rounded-[2rem] p-8 border border-stone-100 dark:border-gray-700 shadow-sm">
-      <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
-        <BootstrapIcon name="door-open-fill" class="text-blue-500" />
+    <!-- Resumo de pedidos de saída -->
+    <div v-if="showPedidos" class="bg-white dark:bg-slate-900 rounded-xl p-5 md:p-6 border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
+      <h3 class="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">
+        <BootstrapIcon name="door-open" class="w-5 h-5 text-blue-500" />
         Pedidos de Saída (Mês)
       </h3>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="text-center">
-          <p class="text-amber-600 text-sm font-bold">Pendentes</p>
-          <p class="text-2xl font-bold">{{ dashboardData?.discipline?.sumario_pedidos?.total_pendentes || 0 }}</p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+          <p class="text-amber-600 dark:text-amber-400 text-sm font-medium mb-1">Pendentes</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.discipline?.sumario_pedidos?.total_pendentes || 0 }}</p>
         </div>
-        <div class="text-center">
-          <p class="text-emerald-600 text-sm font-bold">Aprovados</p>
-          <p class="text-2xl font-bold">{{ dashboardData?.discipline?.sumario_pedidos?.total_autorizados || 0 }}</p>
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+          <p class="text-emerald-600 dark:text-emerald-400 text-sm font-medium mb-1">Aprovados</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.discipline?.sumario_pedidos?.total_autorizados || 0 }}</p>
         </div>
-        <div class="text-center">
-          <p class="text-rose-600 text-sm font-bold">Rejeitados</p>
-          <p class="text-2xl font-bold">{{ dashboardData?.discipline?.sumario_pedidos?.total_rejeitados || 0 }}</p>
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+          <p class="text-rose-600 dark:text-rose-400 text-sm font-medium mb-1">Rejeitados</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.discipline?.sumario_pedidos?.total_rejeitados || 0 }}</p>
         </div>
       </div>
     </div>
 
-    <!-- Sanções por tipo (Disciplinar, Gestor, Suporte) -->
-    <div v-if="showDisciplinar && dashboardData?.discipline?.sancao_por_tipo?.length" class="bg-white dark:bg-gray-800 rounded-[2rem] p-8 border border-stone-100 dark:border-gray-700 shadow-sm">
-      <h3 class="text-lg font-bold mb-6">Sanções por Tipo (Mês)</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div v-for="tipo in dashboardData.discipline.sancao_por_tipo" :key="tipo.tipo_sancao" class="bg-stone-50 dark:bg-gray-700 p-4 rounded-xl text-center">
-          <p class="font-bold text-2xl text-rose-500">{{ tipo.total }}</p>
-          <p class="text-xs">{{ tipo.tipo_sancao }}</p>
+    <!-- Sanções por tipo -->
+    <div v-if="showDisciplinar && dashboardData?.discipline?.sancao_por_tipo?.length" class="bg-white dark:bg-slate-900 rounded-xl p-5 md:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <h3 class="text-base font-semibold text-slate-900 dark:text-white mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">Sanções por Tipo (Mês)</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div v-for="tipo in dashboardData.discipline.sancao_por_tipo" :key="tipo.tipo_sancao" class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg text-center border border-slate-200 dark:border-slate-700">
+          <p class="font-bold text-xl text-rose-600 dark:text-rose-400">{{ tipo.total }}</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">{{ tipo.tipo_sancao }}</p>
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, inject } from 'vue'
 import { useApi } from '~/composables/useApi'
 
 const { api } = useApi()
@@ -140,10 +147,10 @@ const showPedidos = computed(() => {
 })
 
 const descricaoPerfil = computed(() => {
-  if (showFinanceiro.value && showDisciplinar.value && showPedidos.value) return 'completa do internato'
-  if (showFinanceiro.value) return 'financeira do internato'
-  if (showDisciplinar.value) return 'disciplinar do internato'
-  return 'dos dados disponíveis'
+  if (showFinanceiro.value && showDisciplinar.value && showPedidos.value) return 'Visão completa do internato'
+  if (showFinanceiro.value) return 'Análise financeira do internato'
+  if (showDisciplinar.value) return 'Acompanhamento disciplinar do internato'
+  return 'Dados disponíveis do internato'
 })
 
 // Dados do dashboard unificado
@@ -179,9 +186,6 @@ async function exportar(formato: string) {
     const params = new URLSearchParams()
     params.append('tipo', tipoRelatorio.value)
     params.append('formato', formato)
-    // Opcional: adicionar período se implementar seleção de datas
-    // params.append('periodo_inicio', dataInicio.value)
-    // params.append('periodo_fim', dataFim.value)
 
     const blob = await api<Blob>(`/admin/relatorios/exportar/?${params.toString()}`, {
       method: 'GET',
@@ -207,15 +211,3 @@ onMounted(() => {
   carregarDashboard()
 })
 </script>
-
-<style scoped>
-.stat-card {
-  @apply p-6 rounded-[2rem] border shadow-sm relative overflow-hidden;
-}
-.stat-label {
-  @apply text-[10px] font-black uppercase tracking-widest mb-1 opacity-70;
-}
-.stat-value {
-  @apply text-3xl font-black text-gray-900 dark:text-white;
-}
-</style>

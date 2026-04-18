@@ -184,8 +184,11 @@ class RegistoCompletoView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            print("ERROS:", serializer.errors)  # ← adiciona isto
+            return Response(serializer.errors, status=400)
 
+        serializer.is_valid(raise_exception=True)
         dados = serializer.validated_data
         dados_est = dados['estudante']
         dados_enc = dados.get('encarregado')
@@ -219,7 +222,8 @@ class RegistoCompletoView(generics.CreateAPIView):
                     parentesco=dados_enc.get('parentesco', None),
                     telefone_alternativo=dados_enc.get('telefone_alternativo', None),
                     bi=dados_enc.get('bi', None),
-                    morada=dados_enc.get('morada', None)
+                    morada=dados_enc.get('morada', None),
+                    profissao=dados_enc.get('profissao', None),  # NOVO
                 )
 
                 # Cria utilizador para o encarregado se solicitado e telefone fornecido
@@ -263,7 +267,12 @@ class RegistoCompletoView(generics.CreateAPIView):
                     email_pessoal=dados_est.get('email_pessoal', None),
                     morada=dados_est.get('morada', None),
                     nome_mae=dados_est.get('nome_mae', None),
-                    nome_pai=dados_est.get('nome_pai', None)
+                    nome_pai=dados_est.get('nome_pai', None),
+                    # NOVOS CAMPOS
+                    nuit=dados_est.get('nuit', None),
+                    ano_lectivo=dados_est.get('ano_lectivo', '2025/2026'),
+                    nacionalidade=dados_est.get('nacionalidade', 'Moçambicana'),
+                    condicao_saude=dados_est.get('condicao_saude', None),
                 )
 
             return Response({
@@ -337,6 +346,15 @@ class TransferirQuartoView(APIView):
             estudante._quarto_anterior_id = estudante.quarto_id
             estudante.quarto = quarto_destino
             estudante.save()
+            Mensalidade.objects.create(
+                estudante=estudante,
+                admin_id_registo=request.user,
+                mes_referencia=timezone.now().date().replace(day=1),
+                valor_pago=2700.00,
+                estado='Pendente',
+                tipo='Inscrição',
+                data_vencimento=None  # será calculada automaticamente no save()
+            )
             # Signal post_save recalcula ocupação de ambos os quartos
 
         return Response(
@@ -584,14 +602,19 @@ class PresencaBatchCreateView(APIView):
 
         data = serializer.validated_data
         data_presenca = data['data_presenca']
+        periodo = data.get('periodo', 'Manhã')      # NOVO
+        bloco = data.get('bloco')                   # NOVO
         admin_logado = request.user
 
         ids_ausentes = set(data.get('ausentes_ids', []))
         ids_justificados = set(data.get('justificados_ids', []))
 
+        # Filtro por bloco (se informado)
         todos_ativos = Estudante.objects.filter(estado='Activo')
-        presencas = []
+        if bloco:
+            todos_ativos = todos_ativos.filter(quarto__bloco=bloco)
 
+        presencas = []
         for estudante in todos_ativos:
             if estudante.pk in ids_ausentes:
                 estado = 'Ausente'
@@ -605,6 +628,7 @@ class PresencaBatchCreateView(APIView):
                 admin_id_registo=admin_logado,
                 data_presenca=data_presenca,
                 estado=estado,
+                periodo=periodo,                     # NOVO
             ))
 
         try:
@@ -612,15 +636,14 @@ class PresencaBatchCreateView(APIView):
                 PresencaEstudo.objects.bulk_create(presencas)
         except Exception as e:
             return Response(
-                {"erro": f"Já existem presenças registadas para este dia? Detalhe: {str(e)}"},
+                {"erro": f"Já existem presenças registadas para este dia/período? Detalhe: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         return Response(
-            {"status": f"{len(presencas)} presenças registadas para {data_presenca}."},
+            {"status": f"{len(presencas)} presenças registadas para {data_presenca} ({periodo})."},
             status=status.HTTP_201_CREATED
         )
-
 
 class EstudantePresencaListView(generics.ListAPIView):
     """Lista o histórico de presenças de um estudante."""
@@ -1111,7 +1134,7 @@ class EncarregadoEducandosListView(generics.ListAPIView):
 
     def get_queryset(self):
         return Estudante.objects.filter(
-            encarregado=self.request.user.encarregado, estado='Activo'
+            encarregado=self.request.user.encarregado_profile, estado='Activo'
         )
 
 
@@ -1121,7 +1144,7 @@ class EncarregadoEducandoDetailView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated, IsEncarregadoUser]
 
     def get_queryset(self):
-        return Estudante.objects.filter(encarregado=self.request.user.encarregado)
+        return Estudante.objects.filter(encarregado=self.request.user.encarregado_profile)
 
 
 class EncarregadoMensalidadeListView(generics.ListAPIView):
@@ -1134,7 +1157,7 @@ class EncarregadoMensalidadeListView(generics.ListAPIView):
 
     def get_queryset(self):
         ids = Estudante.objects.filter(
-            encarregado=self.request.user.encarregado
+            encarregado=self.request.user.encarregado_profile
         ).values_list('pk', flat=True)
         return Mensalidade.objects.filter(estudante_id__in=ids).order_by('-mes_referencia')
 
@@ -1144,10 +1167,9 @@ class EncarregadoFinanceiroStatsView(APIView):
     permission_classes = [IsAuthenticated, IsEncarregadoUser]
 
     def get(self, request):
-        estudantes = Estudante.objects.filter(encarregado=request.user.encarregado)
+        estudantes = Estudante.objects.filter(encarregado=request.user.encarregado_profile)
         mensalidades = Mensalidade.objects.filter(estudante__in=estudantes)
         hoje = timezone.now().date()
-
         total_pago = mensalidades.filter(estado='Pago').aggregate(
             s=Sum('valor_pago'))['s'] or 0
         faturas_pendentes = mensalidades.filter(estado='Pendente').count()
@@ -1175,7 +1197,7 @@ class EncarregadoSancaoListView(generics.ListAPIView):
 
     def get_queryset(self):
         ids = Estudante.objects.filter(
-            encarregado=self.request.user.encarregado
+            encarregado=self.request.user.encarregado_profile
         ).values_list('pk', flat=True)
         return Sancao.objects.filter(estudante_id__in=ids)
 
@@ -1191,7 +1213,7 @@ class EncarregadoPresencaListView(generics.ListAPIView):
 
     def get_queryset(self):
         ids = Estudante.objects.filter(
-            encarregado=self.request.user.encarregado
+            encarregado=self.request.user.encarregado_profile
         ).values_list('pk', flat=True)
         return PresencaEstudo.objects.filter(estudante_id__in=ids)
 
@@ -1207,7 +1229,7 @@ class EncarregadoPedidoSaidaListView(generics.ListAPIView):
 
     def get_queryset(self):
         ids = Estudante.objects.filter(
-            encarregado=self.request.user.encarregado
+            encarregado=self.request.user.encarregado_profile
         ).values_list('pk', flat=True)
         return PedidoSaida.objects.filter(estudante_id__in=ids)
 
@@ -1219,7 +1241,7 @@ class EncarregadoPedidoSaidaDetailView(generics.UpdateAPIView):
  
     def get_queryset(self):
         ids = Estudante.objects.filter(
-            encarregado=self.request.user.encarregado
+            encarregado=self.request.user.encarregado_profile
         ).values_list('pk', flat=True)
         return PedidoSaida.objects.filter(estudante_id__in=ids)
  
@@ -1243,7 +1265,7 @@ class EncarregadoProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated, IsEncarregadoUser]
 
     def get_object(self):
-        return self.request.user.encarregado
+        return self.request.user.encarregado_profile
 
 
 # ---------------------------------------------------------------------------
@@ -1263,7 +1285,9 @@ class OpcoesView(APIView):
             'estudante_estados': fmt(Estudante.ESTADO_CHOICES),
             'mensalidade_metodos': fmt(Mensalidade.METODO_CHOICES),
             'mensalidade_estados': fmt(Mensalidade.ESTADO_CHOICES),
+            'mensalidade_tipos': fmt(Mensalidade.TIPO_CHOICES),          # NOVO
             'presenca_estados': fmt(PresencaEstudo.ESTADO_CHOICES),
+            'presenca_periodos': fmt(PresencaEstudo.PERIODO_CHOICES),    # NOVO
             'sancao_tipos': fmt(Sancao.TIPO_SANCAO_CHOICES),
             'pedido_saida_estados': fmt(PedidoSaida.ESTADO_CHOICES),
             'quarto_estados': fmt(Quarto.ESTADO_CHOICES),

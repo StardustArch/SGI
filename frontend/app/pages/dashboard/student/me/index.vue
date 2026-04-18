@@ -1,229 +1,367 @@
 <template>
-  <div class="space-y-8 dark:text-white max-w-7xl mx-auto p-4 md:p-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
     
-    <div>
-      <h1 class="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">O Meu Perfil</h1>
-      <p class="text-stone-500 dark:text-gray-400 mt-1 text-lg">Os seus dados pessoais e académicos.</p>
+    <!-- Loading -->
+    <div v-if="pending" class="flex flex-col items-center justify-center py-20 space-y-4">
+      <div class="animate-spin h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+      <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">A carregar o seu perfil...</p>
     </div>
 
-    <div v-if="pending" class="flex flex-col items-center justify-center py-20">
-      <div class="animate-spin h-10 w-10 border-4 border-rose-500 border-t-transparent rounded-full mb-4"></div>
-      <p class="text-stone-400">A carregar informações...</p>
-    </div>
-
-    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div v-else class="space-y-6 md:space-y-8">
       
-      <div class="lg:col-span-2 space-y-8">
-        
-        <div class="bg-white dark:bg-gray-800 rounded-[2rem] p-8 border border-stone-100 dark:border-gray-700 shadow-sm flex items-start gap-6 relative overflow-hidden">
-          <div class="absolute top-0 right-0 w-32 h-32 bg-stone-100 rounded-full -mr-10 -mt-10 dark:bg-gray-700 opacity-50"></div>
-
-          <div class="h-20 w-20 rounded-2xl bg-rose-50 dark:bg-gray-700 text-rose-500 flex items-center justify-center text-2xl font-bold border border-rose-100 dark:border-gray-600 shrink-0 z-10">
-            {{ getIniciais(perfil?.nome_completo || '') }}
-          </div>
-
-          <div class="z-10">
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
-              {{ perfil?.nome_completo }}
-            </h2>
-            <div class="mt-2 flex flex-wrap gap-2">
-              <span class="px-2 py-0.5 rounded bg-stone-100 dark:bg-gray-700 text-xs font-bold uppercase tracking-wide border border-stone-200 dark:border-gray-600 text-stone-500">
-                Estudante
-              </span>
-              <span :class="['px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide border', perfil?.estado === 'Activo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200']">
-                {{ perfil?.estado }}
-              </span>
-            </div>
-            <p class="text-sm text-stone-400 mt-4">
-              <span class="font-bold uppercase text-[10px] tracking-wider">Email de Login:</span><br>
-              {{ perfil?.email }}
-            </p>
-          </div>
+      <!-- Cabeçalho do Estudante -->
+      <section class="bg-white dark:bg-slate-900 rounded-xl p-5 md:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+        <div class="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl sm:text-2xl font-bold border border-blue-100 dark:border-blue-800 shrink-0">
+          {{ getIniciais(perfil?.nome_completo || '') }}
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-[2rem] p-8 border border-stone-100 dark:border-gray-700 shadow-sm">
-          <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2 mb-6">
-            <BootstrapIcon name="mortarboard" class="w-5 h-5 text-rose-500" />
-            Dados Académicos
-          </h3>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div class="bg-stone-50 dark:bg-gray-700/50 p-4 rounded-xl border border-stone-100 dark:border-gray-600">
-                <p class="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Nº Estudante</p>
-                <p class="text-lg font-bold text-gray-800 dark:text-white">{{ perfil?.num_estudante }}</p>
-             </div>
-
-             <div class="bg-stone-50 dark:bg-gray-700/50 p-4 rounded-xl border border-stone-100 dark:border-gray-600">
-                <p class="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Curso</p>
-                <p class="text-lg font-bold text-gray-800 dark:text-white truncate">{{ perfil?.curso }}</p>
-             </div>
-
-             <div class="bg-stone-50 dark:bg-gray-700/50 p-4 rounded-xl border border-stone-100 dark:border-gray-600">
-                <p class="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">Alojamento</p>
-                <div class="flex items-center gap-2">
-                   <BootstrapIcon name="door-closed" class="w-5 h-5 text-stone-400" />
-                   <p class="text-lg font-bold text-gray-800 dark:text-white">Quarto {{ perfil?.quarto }}</p>
-                </div>
-             </div>
+        <div class="flex-grow min-w-0">
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-1 break-words">
+            {{ perfil?.nome_completo }}
+          </h2>
+          <div class="flex flex-wrap items-center gap-2 mb-2 sm:mb-3">
+            <span class="px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+              {{ perfil?.curso }}
+            </span>
+            <span class="px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+              Quarto {{ perfil?.quarto_numero || 'N/A' }}
+            </span>
+            <span :class="['px-2.5 py-0.5 rounded-md text-xs font-medium border', perfil?.estado === 'Activo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30' : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30']">
+              {{ perfil?.estado }}
+            </span>
           </div>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Encarregado: {{ perfil?.encarregado_nome || '—' }} • Tel: {{ perfil?.encarregado_telefone || '—' }}
+          </p>
         </div>
+      </section>
 
-         <div class="bg-white dark:bg-gray-800 rounded-[2rem] p-8 border border-stone-100 dark:border-gray-700 shadow-sm">
-          <h3 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2 mb-6">
-            <BootstrapIcon name="person-heart" class="w-5 h-5 text-rose-500" />
-            Encarregado de Educação
-          </h3>
-
-          <div class="flex flex-col md:flex-row gap-6">
-             <div class="flex-1 space-y-1">
-                <p class="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Nome Completo</p>
-                <p class="text-base font-bold text-gray-800 dark:text-white">{{ perfil?.encarregado_nome }}</p>
-             </div>
-             <div class="flex-1 space-y-1">
-                <p class="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Contacto Principal</p>
-                <p class="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                   <BootstrapIcon name="telephone" class="w-4 h-4 text-stone-400" />
-                   {{ perfil?.encarregado_telefone }}
-                </p>
-             </div>
-          </div>
-        </div>
-
+      <!-- Abas -->
+      <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-x-auto max-w-full no-scrollbar">
+        <button 
+          v-for="tab in ['Financeiro', 'Presenças', 'Disciplina', 'Saídas']" 
+          :key="tab"
+          @click="activeTab = tab"
+          :class="[
+            'px-4 sm:px-6 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
+            activeTab === tab 
+              ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-white shadow-sm' 
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          ]"
+        >
+          {{ tab }}
+        </button>
       </div>
 
-      <div class="space-y-8">
+      <!-- Conteúdo das abas -->
+      <div class="mt-6">
         
-        <div class="bg-white dark:bg-gray-800 rounded-[2rem] p-8 border border-stone-100 dark:border-gray-700 shadow-sm relative overflow-hidden">
-          
-          <div class="flex items-center gap-2 mb-6">
-            <BootstrapIcon name="shield-lock" class="w-5 h-5 text-rose-500" />
-            <h3 class="text-lg font-bold text-gray-800 dark:text-white">Segurança</h3>
+        <!-- Aba Financeiro -->
+        <div v-if="activeTab === 'Financeiro'" class="space-y-5 md:space-y-6">
+          <!-- Cards de estatísticas -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+              <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Total Pago</p>
+              <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ formatMoeda(finStats.total_pago) }}</p>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+              <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Pendentes</p>
+              <p class="text-2xl font-bold text-amber-600 dark:text-amber-400">{{ finStats.pendentes }}</p>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+              <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Valor Mensal</p>
+              <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">25,000 MT</p>
+            </div>
           </div>
 
-          <div v-if="msgPassword.text" :class="['mb-6 p-4 rounded-xl flex items-center gap-3 text-sm font-medium', msgPassword.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100']">
-             <BootstrapIcon v-if="msgPassword.type === 'success'" name="check-circle-fill" class="w-5 h-5" />
-             <BootstrapIcon v-else name="exclamation-triangle-fill" class="w-5 h-5" />
-             {{ msgPassword.text }}
+          <!-- Lista de mensalidades -->
+          <div v-if="loadingFin" class="text-center py-10 text-slate-500">A carregar mensalidades...</div>
+          <div v-else-if="mensalidades.length === 0" class="text-center py-10 text-slate-500">Nenhuma mensalidade encontrada.</div>
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-for="item in mensalidades" :key="item.id" class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-wrap sm:flex-nowrap justify-between items-center gap-2">
+              <div class="min-w-0">
+                <p class="font-semibold text-slate-900 dark:text-white">{{ formatMes(item.mes_referencia) }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ item.tipo || 'Mensalidade' }}</p>
+                <p v-if="item.estado === 'Pago'" class="text-xs text-slate-400 mt-0.5">Pago em {{ formatDate(item.data_pagamento_confirmado) }}</p>
+              </div>
+              <div class="text-right shrink-0">
+                <p :class="item.estado === 'Pago' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'">{{ formatMoeda(item.valor_pago) }}</p>
+                <span :class="[
+                  'text-xs px-2 py-0.5 rounded-md font-medium',
+                  item.estado === 'Pago' 
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' 
+                    : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                ]">{{ item.estado }}</span>
+              </div>
+            </div>
           </div>
+        </div>
 
-          <form @submit.prevent="handleChangePassword" class="space-y-5">
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-stone-500 uppercase ml-1">Senha Atual</label>
-              <input 
-                v-model="formSenha.old_password" 
-                type="password" 
-                required 
-                placeholder="••••••••"
-                class="w-full bg-stone-50 dark:bg-gray-700 border border-stone-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-rose-200 transition-all font-medium" 
-              />
-            </div>
-            
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-stone-500 uppercase ml-1">Nova Senha</label>
-              <input 
-                v-model="formSenha.new_password" 
-                type="password" 
-                required 
-                placeholder="••••••••"
-                class="w-full bg-stone-50 dark:bg-gray-700 border border-stone-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-rose-200 transition-all font-medium" 
-              />
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-stone-500 uppercase ml-1">Confirmar Nova Senha</label>
-              <input 
-                v-model="formSenha.confirm_password" 
-                type="password" 
-                required 
-                placeholder="••••••••"
-                class="w-full bg-stone-50 dark:bg-gray-700 border border-stone-200 dark:border-gray-600 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-rose-200 transition-all font-medium" 
-              />
-            </div>
-
+        <!-- Aba Presenças -->
+        <div v-else-if="activeTab === 'Presenças'" class="space-y-5">
+          <!-- Filtros -->
+          <div class="flex flex-wrap gap-2">
             <button 
-              type="submit" 
-              :disabled="pendingSenha"
-              class="w-full py-3.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm hover:opacity-90 shadow-lg shadow-stone-200 dark:shadow-none transition-all disabled:opacity-50 mt-4 flex justify-center items-center gap-2"
+              v-for="estado in ['Todos', 'Presente', 'Ausente', 'Justificado']" 
+              :key="estado" 
+              @click="filtroPresenca = estado === 'Todos' ? null : estado" 
+              :class="[
+                'px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap border transition-colors',
+                (filtroPresenca === estado || (estado === 'Todos' && !filtroPresenca)) 
+                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-white border-blue-200 dark:border-blue-800 shadow-sm' 
+                  : 'bg-transparent border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              ]"
             >
-              <span v-if="pendingSenha" class="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
-              {{ pendingSenha ? 'A processar...' : 'Atualizar Senha' }}
+              {{ estado }}
             </button>
-          </form>
+          </div>
 
+          <div v-if="loadingPres" class="text-center py-10 text-slate-500">A carregar presenças...</div>
+          <div v-else-if="presencasFiltradas.length === 0" class="text-center py-10 text-slate-500">Nenhum registo de presença.</div>
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div v-for="item in presencasFiltradas" :key="item.id" class="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+              <span class="text-sm">{{ formatDate(item.data_presenca) }} <span class="text-slate-400">({{ item.periodo || 'Manhã' }})</span></span>
+              <span :class="[
+                'text-sm font-medium',
+                item.estado === 'Presente' ? 'text-emerald-600 dark:text-emerald-400' : 
+                (item.estado === 'Ausente' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400')
+              ]">{{ item.estado }}</span>
+            </div>
+          </div>
         </div>
 
-      </div>
+        <!-- Aba Disciplina -->
+        <div v-else-if="activeTab === 'Disciplina'" class="space-y-5">
+          <!-- Filtros -->
+          <div class="flex flex-wrap gap-2">
+            <button 
+              v-for="tipo in ['Todos', 'Advertência Verbal', 'Trabalho Comunitário', 'Suspensão de Saída']" 
+              :key="tipo" 
+              @click="filtroSancao = tipo === 'Todos' ? null : tipo" 
+              :class="[
+                'px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg whitespace-nowrap border transition-colors',
+                (filtroSancao === tipo || (tipo === 'Todos' && !filtroSancao)) 
+                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-white border-blue-200 dark:border-blue-800 shadow-sm' 
+                  : 'bg-transparent border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              ]"
+            >
+              {{ tipo }}
+            </button>
+          </div>
 
+          <div v-if="loadingSanc" class="text-center py-10 text-slate-500">A carregar sanções...</div>
+          <div v-else-if="sancoesFiltradas.length === 0" class="text-center py-10 text-slate-500">Nenhuma sanção registada.</div>
+          <div v-else class="space-y-3">
+            <div v-for="item in sancoesFiltradas" :key="item.id" class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div class="flex flex-wrap justify-between gap-2 mb-2">
+                <span class="font-semibold text-slate-900 dark:text-white">{{ formatDate(item.data_ocorrencia) }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 font-medium">{{ item.tipo_sancao }}</span>
+              </div>
+              <p class="text-sm text-slate-600 dark:text-slate-300">{{ item.descricao }}</p>
+              <p v-if="item.notificado_encarregado" class="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+                <span class="inline-block w-1 h-1 rounded-full bg-emerald-500"></span>
+                Encarregado notificado
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Aba Saídas -->
+        <div v-else-if="activeTab === 'Saídas'" class="space-y-6">
+          <!-- Formulário de criação -->
+          <div class="bg-slate-50 dark:bg-slate-800/50 p-5 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h3 class="text-base font-semibold text-slate-900 dark:text-white mb-5 border-b border-slate-200 dark:border-slate-700 pb-3">Nova Solicitação de Saída</h3>
+            <form @submit.prevent="criarPedido" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input v-model="novoPedido.data_saida_pretendida" type="date" required class="input" />
+                <input v-model="novoPedido.data_retorno_pretendida" type="date" required class="input" />
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <input v-model="novoPedido.destino" type="text" placeholder="Destino (ex: Casa)" class="input" />
+                <input v-model="novoPedido.cidade_destino" type="text" placeholder="Cidade" class="input" />
+                <input v-model="novoPedido.meio_transporte" type="text" placeholder="Meio de transporte" class="input" />
+              </div>
+              <textarea v-model="novoPedido.motivo" rows="2" required placeholder="Motivo da saída..." class="input"></textarea>
+              <div class="flex justify-end">
+                <button 
+                  type="submit" 
+                  :disabled="criando" 
+                  class="px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed min-h-[44px]"
+                >
+                  <span v-if="criando" class="inline-flex items-center gap-2">
+                    <span class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                    Enviando...
+                  </span>
+                  <span v-else>Enviar Pedido</span>
+                </button>
+              </div>
+            </form>
+            <div v-if="msgSucesso" class="mt-4 p-3 bg-emerald-50 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400 rounded-lg text-sm border border-emerald-200 dark:border-emerald-800/30">{{ msgSucesso }}</div>
+            <div v-if="msgErro" class="mt-4 p-3 bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-400 rounded-lg text-sm border border-red-200 dark:border-red-800/30">{{ msgErro }}</div>
+          </div>
+
+          <!-- Lista de pedidos -->
+          <div v-if="loadingSaidas" class="text-center py-10 text-slate-500">A carregar pedidos de saída...</div>
+          <div v-else-if="pedidos.length === 0" class="text-center py-10 text-slate-500">Nenhum pedido de saída.</div>
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-for="item in pedidos" :key="item.id" class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div class="flex flex-wrap justify-between gap-2 mb-3">
+                <span class="font-semibold text-slate-900 dark:text-white text-sm">
+                  {{ formatDate(item.data_saida_pretendida) }} → {{ formatDate(item.data_retorno_pretendida) }}
+                </span>
+                <span :class="getStatusBadge(item.estado)">{{ getStatusLabel(item.estado) }}</span>
+              </div>
+              <p class="text-sm text-slate-600 dark:text-slate-300 mb-2">{{ item.motivo }}</p>
+              <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400 mb-2">
+                <span v-if="item.destino">{{ item.destino }}</span>
+                <span v-if="item.cidade_destino">{{ item.cidade_destino }}</span>
+                <span v-if="item.meio_transporte">{{ item.meio_transporte }}</span>
+              </div>
+              <div v-if="item.motivo_rejeicao" class="mt-3 text-xs text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/20 p-2 rounded-md border border-rose-200 dark:border-rose-800/30">
+                <strong>Rejeitado:</strong> {{ item.motivo_rejeicao }}
+              </div>
+              <div v-if="item.observacao_admin" class="mt-3 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-md border border-amber-200 dark:border-amber-800/30">
+                <strong>Observação:</strong> {{ item.observacao_admin }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 
 const { api } = useApi()
+const route = useRoute()
 
-// Buscar os dados do perfil (Estudante)
-// Atenção: Use o endpoint correto para estudante
-const { data: perfil, pending } = await useAsyncData(
-  'student-profile',
-  () => api<any>('/student/me/'),
-  { lazy: true }
-)
+const activeTab = ref((route.query.tab as string) || 'Financeiro')
+const pending = ref(true)
 
-// --- LÓGICA: ALTERAR SENHA ---
-const pendingSenha = ref(false)
-const msgPassword = reactive({ text: '', type: '' })
-const formSenha = reactive({
-  old_password: '',
-  new_password: '',
-  confirm_password: ''
+// Dados do perfil
+const perfil = ref<any>(null)
+
+// Financeiro
+const mensalidades = ref<any[]>([])
+const loadingFin = ref(false)
+const finStats = reactive({ total_pago: 0, pendentes: 0 })
+
+// Presenças
+const presencas = ref<any[]>([])
+const loadingPres = ref(false)
+const filtroPresenca = ref<string | null>(null)
+
+// Sanções
+const sancoes = ref<any[]>([])
+const loadingSanc = ref(false)
+const filtroSancao = ref<string | null>(null)
+
+// Saídas
+const pedidos = ref<any[]>([])
+const loadingSaidas = ref(false)
+const novoPedido = reactive({
+  data_saida_pretendida: '',
+  data_retorno_pretendida: '',
+  motivo: '',
+  destino: '',
+  cidade_destino: '',
+  meio_transporte: ''
+})
+const criando = ref(false)
+const msgSucesso = ref('')
+const msgErro = ref('')
+
+// Computed com filtros
+const presencasFiltradas = computed(() => {
+  if (!filtroPresenca.value) return presencas.value
+  return presencas.value.filter(p => p.estado === filtroPresenca.value)
 })
 
-const handleChangePassword = async () => {
-  pendingSenha.value = true
-  msgPassword.text = ''
+const sancoesFiltradas = computed(() => {
+  if (!filtroSancao.value) return sancoes.value
+  return sancoes.value.filter(s => s.tipo_sancao === filtroSancao.value)
+})
 
-  if (formSenha.new_password !== formSenha.confirm_password) {
-    msgPassword.type = 'error'
-    msgPassword.text = "As novas senhas não coincidem."
-    pendingSenha.value = false
-    return
-  }
-
+// Carregar tudo
+onMounted(async () => {
   try {
-    await api('/users/change-password/', {
-      method: 'PATCH',
-      body: {
-        old_password: formSenha.old_password,
-        new_password: formSenha.new_password
-      }
-    })
-    msgPassword.type = 'success'
-    msgPassword.text = "Senha alterada com sucesso!"
-    
-    // Limpar campos
-    formSenha.old_password = ''
-    formSenha.new_password = ''
-    formSenha.confirm_password = ''
-  } catch (err: any) {
-    msgPassword.type = 'error'
-    // Tenta ler a mensagem de erro específica do backend
-    if (err.response?._data?.old_password) msgPassword.text = "A senha antiga está incorreta."
-    else if (err.response?._data?.new_password) msgPassword.text = err.response._data.new_password[0]
-    else msgPassword.text = "Ocorreu um erro ao alterar a senha."
+    const [perfilRes, finRes, presRes, sancRes, saidasRes] = await Promise.all([
+      api('/student/me/'),
+      api('/student/financial/'),
+      api('/student/attendance/'),
+      api('/student/discipline/'),
+      api('/student/exits/')
+    ])
+    perfil.value = perfilRes
+    mensalidades.value = finRes.results || finRes
+    presencas.value = presRes.results || presRes
+    sancoes.value = sancRes.results || sancRes
+    pedidos.value = saidasRes.results || saidasRes
+
+    // Calcular stats financeiras
+    const pagos = mensalidades.value.filter((m: any) => m.estado === 'Pago')
+    finStats.total_pago = pagos.reduce((acc: number, m: any) => acc + Number(m.valor_pago), 0)
+    finStats.pendentes = mensalidades.value.filter((m: any) => m.estado !== 'Pago').length
+  } catch (e) {
+    console.error('Erro ao carregar perfil', e)
   } finally {
-    pendingSenha.value = false
+    pending.value = false
+  }
+})
+
+// Criar pedido de saída
+async function criarPedido() {
+  criando.value = true
+  msgSucesso.value = ''
+  msgErro.value = ''
+  try {
+    await api('/student/exits/', { method: 'POST', body: novoPedido })
+    msgSucesso.value = 'Pedido enviado com sucesso!'
+    // Limpar formulário
+    Object.assign(novoPedido, { data_saida_pretendida: '', data_retorno_pretendida: '', motivo: '', destino: '', cidade_destino: '', meio_transporte: '' })
+    // Recarregar lista
+    const saidasRes = await api('/student/exits/')
+    pedidos.value = saidasRes.results || saidasRes
+  } catch (e: any) {
+    msgErro.value = e.response?._data?.erro || 'Erro ao enviar pedido.'
+  } finally {
+    criando.value = false
   }
 }
 
-// Helper Iniciais
+// Helpers
 const getIniciais = (nome: string) => {
-  const limpo = (nome || '').trim();
-  if (!limpo) return '??';
-  const partes = limpo.split(/\s+/);
-  const primeira = partes[0]?.[0] || '';
-  const ultima = partes.length > 1 ? partes[partes.length - 1]?.[0] || '' : '';
-  return (primeira + ultima).toUpperCase();
+  const partes = (nome || '').trim().split(/\s+/)
+  return ((partes[0]?.[0] || '') + (partes.length > 1 ? partes[partes.length - 1]?.[0] || '' : '')).toUpperCase()
+}
+const formatMoeda = (v: any) => new Intl.NumberFormat('pt-MZ', { style: 'currency', currency: 'MZN' }).format(Number(v))
+const formatMes = (d: string) => new Date(d).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
+const formatDate = (d: string) => new Date(d).toLocaleDateString('pt-PT')
+const getStatusBadge = (e: string) => {
+  if (e === 'Autorizado') return 'px-2.5 py-0.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/30'
+  if (e === 'Rejeitado') return 'px-2.5 py-0.5 rounded-md text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800/30'
+  return 'px-2.5 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/30'
+}
+const getStatusLabel = (e: string) => {
+  if (e === 'Aguardando_Encarregado') return 'Aguardando Encarregado'
+  return e
 }
 </script>
+
+<style scoped>
+.input {
+  @apply w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors;
+}
+
+/* Esconder scrollbar em navegadores modernos */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style>

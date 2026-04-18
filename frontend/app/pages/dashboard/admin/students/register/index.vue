@@ -1,30 +1,39 @@
 <template>
-  <div class="space-y-6 dark:text-white max-w-5xl mx-auto pb-10">
-    <div>
-      <NuxtLink to="/dashboard/admin/students" class="text-blue-600 dark:text-blue-400 hover:underline mb-2 block">
-        &larr; Voltar para a lista de estudantes
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+    
+    <!-- Cabeçalho -->
+    <div class="mb-6 md:mb-8">
+      <NuxtLink to="/dashboard/admin/students" class="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 mb-3 transition-colors">
+        <BootstrapIcon name="arrow-left" class="w-4 h-4" />
+        Voltar para a lista de estudantes
       </NuxtLink>
-      <h1 class="text-3xl font-bold">Registar Novo Estudante</h1>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Registar Novo Estudante</h1>
+      <p class="text-sm md:text-base text-slate-500 dark:text-slate-400 mt-1">Preencha os dados do novo interno e do seu encarregado.</p>
     </div>
 
-    <div v-if="successMsg" class="p-4 rounded-md bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-200">
-      {{ successMsg }}
+    <!-- Mensagens de feedback -->
+    <div v-if="successMsg" class="mb-6 p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 text-sm border border-emerald-200 dark:border-emerald-800/30 flex items-start gap-2">
+      <BootstrapIcon name="check-circle-fill" class="w-5 h-5 shrink-0 mt-0.5" />
+      <span>{{ successMsg }}</span>
     </div>
-    <div v-if="errorMsg" class="p-4 rounded-md bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200">
-      {{ errorMsg }}
+    <div v-if="errorMsg" class="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 text-sm border border-red-200 dark:border-red-800/30 flex items-start gap-2">
+      <BootstrapIcon name="exclamation-triangle-fill" class="w-5 h-5 shrink-0 mt-0.5" />
+      <span>{{ errorMsg }}</span>
     </div>
 
-    <form @submit.prevent="handleRegister" class="space-y-8">
+    <form @submit.prevent="handleRegister" class="space-y-6 md:space-y-8">
 
       <!-- Seção: Dados do Estudante -->
-      <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-        <h2 class="text-xl font-semibold mb-4 border-b pb-2">Dados do Estudante</h2>
+      <section class="bg-white dark:bg-slate-900 rounded-xl p-5 md:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <h2 class="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <BootstrapIcon name="person" class="w-5 h-5 text-slate-400" />
+          Dados do Estudante
+        </h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="label">Nome Completo *</label>
             <input v-model="form.estudante.nome_completo" type="text" class="input" required />
           </div>
-          <!-- REMOVIDO: campo de email do estudante -->
           <div>
             <label class="label">Curso *</label>
             <input v-model="form.estudante.curso" type="text" class="input" required />
@@ -42,12 +51,32 @@
             <input v-model="form.estudante.data_nascimento" type="date" class="input" />
           </div>
           <div>
-            <label class="label">BI/NUIT</label>
+            <label class="label">BI</label>
             <input v-model="form.estudante.bi" type="text" class="input" />
+          </div>
+          <div>
+            <label class="label">NUIT</label>
+            <input v-model="form.estudante.nuit" type="text" class="input" />
           </div>
           <div>
             <label class="label">Telefone Pessoal</label>
             <input v-model="form.estudante.telefone_pessoal" type="tel" class="input" />
+          </div>
+          <div>
+            <label class="label">Ano Lectivo *</label>
+            <select v-model="form.estudante.ano_lectivo" class="input" required>
+              <option value="2024/2025">2024/2025</option>
+              <option value="2025/2026" selected>2025/2026</option>
+              <option value="2026/2027">2026/2027</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">Nacionalidade</label>
+            <input v-model="form.estudante.nacionalidade" type="text" class="input" placeholder="Moçambicana" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="label">Condições de Saúde</label>
+            <textarea v-model="form.estudante.condicao_saude" rows="2" class="input" placeholder="Alergias, medicamentos, etc."></textarea>
           </div>
           <div>
             <label class="label">Email Pessoal (opcional)</label>
@@ -73,16 +102,19 @@
                 Bloco {{ q.bloco }} - Quarto {{ q.numero }}
               </option>
             </select>
-            <p v-if="form.estudante.genero" class="text-xs mt-1 text-gray-500">
+            <p v-if="form.estudante.genero" class="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Apenas quartos {{ form.estudante.genero === 'M' ? 'Masculinos' : 'Femininos' }} disponíveis.
             </p>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Seção: Contacto de Emergência (obrigatório) -->
-      <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-        <h2 class="text-xl font-semibold mb-4 border-b pb-2">Contacto de Emergência</h2>
+      <!-- Seção: Contacto de Emergência -->
+      <section class="bg-white dark:bg-slate-900 rounded-xl p-5 md:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <h2 class="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-5 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <BootstrapIcon name="person-heart" class="w-5 h-5 text-slate-400" />
+          Contacto de Emergência
+        </h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="label">Nome Completo *</label>
@@ -99,6 +131,10 @@
               <option value="Avô">Avô/Avó</option>
               <option value="Outro">Outro</option>
             </select>
+          </div>
+          <div>
+            <label class="label">Profissão</label>
+            <input v-model="form.encarregado.profissao" type="text" class="input" />
           </div>
           <div>
             <label class="label">Telefone Principal *</label>
@@ -118,16 +154,27 @@
           </div>
         </div>
 
-        <div class="mt-4 flex items-center gap-2">
-          <input type="checkbox" v-model="criarUsuarioEncarregado" id="criarUsuarioEncarregado" />
-          <label for="criarUsuarioEncarregado">Criar acesso ao portal para o encarregado (login com telefone)</label>
+        <div class="mt-5 flex items-center gap-2">
+          <input 
+            type="checkbox" 
+            v-model="criarUsuarioEncarregado" 
+            id="criarUsuarioEncarregado" 
+            class="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500"
+          />
+          <label for="criarUsuarioEncarregado" class="text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+            Criar acesso ao portal para o encarregado (login com telefone)
+          </label>
         </div>
-        <!-- REMOVIDO: campo de email para encarregado, pois login será com telefone -->
-      </div>
+      </section>
 
+      <!-- Botão de submissão -->
       <div class="flex justify-end">
-        <button type="submit" :disabled="pending" class="btn-primary flex items-center gap-2">
-          <span v-if="pending" class="animate-spin text-lg">⏳</span>
+        <button 
+          type="submit" 
+          :disabled="pending" 
+          class="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 min-h-[44px]"
+        >
+          <span v-if="pending" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
           {{ pending ? 'A processar registo...' : 'Finalizar Registo' }}
         </button>
       </div>
@@ -154,7 +201,11 @@ const form = ref({
     email_pessoal: '',
     morada: '',
     nome_mae: '',
-    nome_pai: ''
+    nome_pai: '',
+    nuit: '',
+    ano_lectivo: '2025/2026',
+    nacionalidade: 'Moçambicana',
+    condicao_saude: '',
   },
   encarregado: {
     nome_completo: '',
@@ -163,11 +214,11 @@ const form = ref({
     telefone_alternativo: '',
     email: '',
     bi: '',
-    morada: ''
+    morada: '',
+    profissao: ''
   }
 })
 
-const hasEncarregado = ref(false)
 const criarUsuarioEncarregado = ref(false)
 const pending = ref(false)
 const loadingQuartos = ref(false)
@@ -179,9 +230,7 @@ onMounted(async () => {
   loadingQuartos.value = true
   try {
     const response = await api<any>('/admin/quartos/?estado=Activo')
-    // Se a resposta tem a estrutura paginada (results), extraia; senão, use direto
     listaQuartos.value = response.results ?? response
-    console.log('Quartos carregados:', listaQuartos.value) // para debug
   } catch (err) {
     console.error("Erro ao carregar quartos:", err)
     errorMsg.value = "Não foi possível carregar a lista de quartos."
@@ -200,7 +249,6 @@ async function handleRegister() {
   errorMsg.value = null
   successMsg.value = null
 
-  // Preparar payload
   const payload: any = {
     estudante: {
       nome_completo: form.value.estudante.nome_completo,
@@ -213,7 +261,11 @@ async function handleRegister() {
       email_pessoal: form.value.estudante.email_pessoal || null,
       morada: form.value.estudante.morada || null,
       nome_mae: form.value.estudante.nome_mae || null,
-      nome_pai: form.value.estudante.nome_pai || null
+      nome_pai: form.value.estudante.nome_pai || null,
+      nuit: form.value.estudante.nuit || null,
+      ano_lectivo: form.value.estudante.ano_lectivo,
+      nacionalidade: form.value.estudante.nacionalidade || 'Moçambicana',
+      condicao_saude: form.value.estudante.condicao_saude || null,
     },
     encarregado: {
       nome_completo: form.value.encarregado.nome_completo,
@@ -221,7 +273,8 @@ async function handleRegister() {
       telefone_principal: form.value.encarregado.telefone_principal,
       telefone_alternativo: form.value.encarregado.telefone_alternativo || null,
       bi: form.value.encarregado.bi || null,
-      morada: form.value.encarregado.morada || null
+      morada: form.value.encarregado.morada || null,
+      profissao: form.value.encarregado.profissao || null,
     },
     criar_usuario_encarregado: criarUsuarioEncarregado.value
   }
@@ -232,10 +285,8 @@ async function handleRegister() {
       body: payload
     })
 
-    // Exibir o código de acesso gerado
     successMsg.value = `Sucesso! Estudante registado. Código de acesso: ${data.codigo_acesso} (senha: mudar1234)`
     
-    // Reset do formulário
     form.value = {
       estudante: {
         nome_completo: '',
@@ -249,7 +300,11 @@ async function handleRegister() {
         email_pessoal: '',
         morada: '',
         nome_mae: '',
-        nome_pai: ''
+        nome_pai: '',
+        nuit: '',
+        ano_lectivo: '2025/2026',
+        nacionalidade: 'Moçambicana',
+        condicao_saude: '',
       },
       encarregado: {
         nome_completo: '',
@@ -258,7 +313,8 @@ async function handleRegister() {
         telefone_alternativo: '',
         email: '',
         bi: '',
-        morada: ''
+        morada: '',
+        profissao: ''
       }
     }
     criarUsuarioEncarregado.value = false
@@ -280,14 +336,10 @@ async function handleRegister() {
 
 <style scoped>
 .label {
-  @apply block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1;
+  @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1;
 }
 
 .input {
-  @apply w-full px-4 py-2 border rounded-lg shadow-sm bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-2 focus:ring-blue-500 transition-all;
-}
-
-.btn-primary {
-  @apply px-8 py-3 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 dark:bg-blue-500 shadow-lg disabled:opacity-50 transition-all;
+  @apply w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors;
 }
 </style>
