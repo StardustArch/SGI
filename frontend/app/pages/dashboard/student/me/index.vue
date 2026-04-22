@@ -70,7 +70,7 @@
             </div>
             <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Valor Mensal</p>
-              <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">25,000 MT</p>
+              <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">2500,00 MT</p>
             </div>
           </div>
 

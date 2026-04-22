@@ -47,7 +47,7 @@
           <div class="text-left md:text-right">
             <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Valor a Cobrar</p>
             <h3 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
-              {{ formatMoeda(mensalidade.valor_pago > 0 ? mensalidade.valor_pago : 25000) }}
+              {{ formatMoeda(mensalidade.valor_pago > 0 ? mensalidade.valor_pago : 2500) }}
             </h3>
           </div>
         </div>
@@ -135,7 +135,7 @@ const saving = ref(false)
 
 const form = reactive({
   estado: 'Pago',
-  valor_pago: 25000,
+  valor_pago: 2500,
   metodo_pagamento: 'Depósito',
   data_pagamento_confirmado: new Date().toISOString().substr(0, 10),
   referencia_comprovativo: ''

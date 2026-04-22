@@ -107,7 +107,7 @@
 
         <div class="flex-1">
           <p class="text-sm text-slate-600 dark:text-slate-300 mb-1">{{ item.tipo || 'Mensalidade' }}</p>
-          <p class="text-lg font-bold text-slate-900 dark:text-white">{{ formatMoeda(item.valor_pago || 25000) }}</p>
+          <p class="text-lg font-bold text-slate-900 dark:text-white">{{ formatMoeda(item.valor_pago || 2500) }}</p>
         </div>
 
         <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">

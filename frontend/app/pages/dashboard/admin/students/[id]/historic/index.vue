@@ -66,7 +66,7 @@
             <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-2">
               {{ formatMes(pag.mes_referencia) }} • {{ pag.tipo || 'Mensalidade' }}
             </p>
-            <h4 class="text-xl font-bold text-slate-900 dark:text-white mb-3">{{ formatMoeda(pag.valor_pago || 25000) }}</h4>
+            <h4 class="text-xl font-bold text-slate-900 dark:text-white mb-3">{{ formatMoeda(pag.valor_pago || 2500) }}</h4>
             <span :class="[
               'px-2.5 py-0.5 rounded-md text-xs font-medium border',
               pag.estado === 'Pago' 
