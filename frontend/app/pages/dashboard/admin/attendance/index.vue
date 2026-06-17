@@ -25,6 +25,8 @@
           <input 
             v-model="dataChamada" 
             type="date" 
+            :max="maxDate"
+            :min="minDate"
             class="bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-700 dark:text-slate-300 p-1"
             @change="carregarPresencasExistentes"
           />
@@ -61,7 +63,7 @@
       </div>
       <button 
         @click="salvarChamada"
-        :disabled="submitting || loadingEstudantes"
+        :disabled="submitting || loadingEstudantes || estudantesFiltrados.length === 0"
         class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center min-h-[88px]"
       >
         <span v-if="submitting" class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mb-1"></span>
@@ -89,7 +91,7 @@
       >
         <div class="flex items-center gap-3 min-w-0">
           <div class="h-10 w-10 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-semibold text-sm border border-blue-100 dark:border-blue-800 shrink-0">
-            {{ aluno.nome_completo.charAt(0).toUpperCase() }}
+            {{ aluno.nome_completo ? aluno.nome_completo.charAt(0).toUpperCase() : '?' }}
           </div>
           <div class="min-w-0">
             <h3 class="font-semibold text-slate-900 dark:text-white truncate">{{ aluno.nome_completo }}</h3>
@@ -136,15 +138,15 @@
           >
             <BootstrapIcon name="info-lg" class="w-4 h-4" />
           </button>
-            <button 
-    @click="navigateTo(`/dashboard/admin/students/${aluno.utilizador_id}/historic?tab=Presenças`)"
-    class="p-2 hover:bg-stone-100 rounded-lg text-stone-400 hover:text-blue-500 transition-colors"
-    title="Ver histórico de presenças"
-  >
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  </button>
+          <button 
+            @click="navigateTo(`/dashboard/admin/students/${aluno.utilizador_id}/historic?tab=Presenças`)"
+            class="p-2 hover:bg-stone-100 rounded-lg text-stone-400 hover:text-blue-500 transition-colors"
+            title="Ver histórico de presenças"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>
@@ -157,13 +159,18 @@ import { ref, computed, watch } from 'vue'
 
 const { api } = useApi()
 
-const dataChamada = ref(new Date().toISOString().substr(0, 10))
+const maxDate = new Date().toISOString().substr(0, 10)
+const minDate = `${new Date().getFullYear() - 1}-01-01` // Limite retroativo aceitável
+
+const dataChamada = ref(maxDate)
 const periodoSelecionado = ref('Manhã')
 const filtroBloco = ref('')
 const submitting = ref(false)
 const loadingEstudantes = ref(false)
 const todosEstudantes = ref<any[]>([])
 const listaChamada = ref<any[]>([])
+
+const periodosValidos = ['Manhã', 'Tarde', 'Noite']
 
 const blocosUnicos = computed(() => {
   const blocos = todosEstudantes.value.map(e => e.bloco).filter(Boolean)
@@ -203,6 +210,10 @@ async function carregarEstudantes() {
 
 async function carregarPresencasExistentes() {
   if (!dataChamada.value || listaChamada.value.length === 0) return
+  
+  // Garantir que a data digitada manualmente não passe da validação básica
+  if (dataChamada.value > maxDate || dataChamada.value < minDate) return
+
   try {
     const response = await api<any>(`/admin/presencas/?data_presenca=${dataChamada.value}&periodo=${periodoSelecionado.value}`)
     const presencas = response.results ?? response
@@ -231,8 +242,19 @@ const contagem = computed(() => ({
 }))
 
 async function salvarChamada() {
-  if (!dataChamada.value) {
-    alert('Selecione uma data antes de submeter.')
+  // Validações de Segurança contra inputs manuais ou burlas de HTML
+  if (!dataChamada.value || dataChamada.value > maxDate || dataChamada.value < minDate) {
+    alert('Data inválida para registro de chamada.')
+    return
+  }
+
+  if (!periodosValidos.includes(periodoSelecionado.value)) {
+    alert('Período selecionado é inválido.')
+    return
+  }
+
+  if (listaChamada.value.length === 0) {
+    alert('Não existem estudantes na lista para submeter.')
     return
   }
 

@@ -15,7 +15,7 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/api/**': {
-      proxy: 'http://backend:8000/api/**'
+      proxy: 'http://localhost:8000/api/**'
     }
   },
   // css: ['~/assets/css/main.css'],
@@ -28,5 +28,23 @@ export default defineNuxtConfig({
     configPath: 'tailwind.config',
     exposeConfig: false,
     viewer: true,
-  }
+  },
+  vite: {
+    server: {
+      watch: {
+        usePolling: true,
+        interval: 500, // Aumentar de 100ms para 500ms alivia muito o uso de CPU
+        ignored: [
+          '**/.nuxt/**',
+          '**/.output/**',
+          '**/node_modules/**',
+          '**/dist/**'
+        ]
+      },
+      hmr: {
+        protocol: 'ws',
+        host: 'localhost'
+      }
+    }
+  },
 })

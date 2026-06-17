@@ -44,7 +44,7 @@
 
           <div>
             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data da Ocorrência</label>
-            <input v-model="form.data_ocorrencia" type="date" required class="input" />
+            <input v-model="form.data_ocorrencia" type="date" :max="maxDate" required class="input" />
           </div>
 
           <div class="md:col-span-2">
@@ -60,11 +60,15 @@
           </div>
 
           <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Descrição / Motivo</label>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Descrição / Motivo</label>
+              <span class="text-xs text-slate-400">{{ form.descricao.length }}/500 caracteres</span>
+            </div>
             <textarea 
               v-model="form.descricao" 
               required 
               rows="3"
+              maxlength="500"
               placeholder="Descreva o que aconteceu detalhadamente..." 
               class="input resize-none"
             ></textarea>
@@ -82,7 +86,7 @@
         <div class="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
           <button 
             type="submit" 
-            :disabled="saving" 
+            :disabled="saving || form.descricao.length > 500" 
             class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 min-h-[44px]"
           >
             <span v-if="saving" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -158,6 +162,8 @@ import { ref, reactive, computed } from 'vue'
 
 const { api } = useApi()
 
+const maxDate = new Date().toISOString().substr(0, 10)
+
 const showForm = ref(false)
 const saving = ref(false)
 const notificandoId = ref<number | null>(null)
@@ -172,7 +178,7 @@ const tiposSancao = [
 const form = reactive({
   estudante: '',
   tipo_sancao: '',
-  data_ocorrencia: new Date().toISOString().substr(0, 10),
+  data_ocorrencia: maxDate,
   descricao: '',
   notificado_encarregado: false
 })
@@ -207,15 +213,42 @@ const sancoesLista = computed(() => {
 })
 
 async function submitSancao() {
-  if (!form.estudante || !form.tipo_sancao || !form.descricao) {
-    alert('Preencha todos os campos obrigatórios.')
+  // Validações estritas anti-inundação de dados ou bypass de HTML
+  if (!form.estudante) {
+    alert('Selecione um estudante válido.')
     return
   }
+
+  if (!form.tipo_sancao || !tiposSancao.includes(form.tipo_sancao)) {
+    alert('Selecione um tipo de sanção válido.')
+    return
+  }
+
+  if (!form.data_ocorrencia || form.data_ocorrencia > maxDate) {
+    alert('A data da ocorrência não pode ser no futuro.')
+    return
+  }
+
+  // Tratando espaços em branco maliciosos antes de validar o tamanho do texto
+  const descricaoSanitizada = form.descricao.trim()
+  if (!descricaoSanitizada || descricaoSanitizada.length < 10) {
+    alert('A descrição precisa ter pelo menos 10 caracteres.')
+    return
+  }
+
+  if (descricaoSanitizada.length > 500) {
+    alert('A descrição não pode exceder 500 caracteres.')
+    return
+  }
+
   saving.value = true
   try {
     await api('/admin/sancoes/', {
       method: 'POST',
-      body: form
+      body: {
+        ...form,
+        descricao: descricaoSanitizada
+      }
     })
     alert('Sanção registada com sucesso!')
     form.estudante = ''
@@ -233,6 +266,7 @@ async function submitSancao() {
 }
 
 async function marcarComoNotificado(sancaoId: number) {
+  if (!sancaoId) return
   notificandoId.value = sancaoId
   try {
     await api(`/admin/sancoes/${sancaoId}/`, {
@@ -248,9 +282,9 @@ async function marcarComoNotificado(sancaoId: number) {
   }
 }
 
-// Helpers
-const formatDia = (d: string) => new Date(d).getDate().toString().padStart(2, '0')
-const formatMesAno = (d: string) => new Date(d).toLocaleDateString('pt-PT', { month: 'short', year: 'numeric' })
+// Helpers seguros para datas inválidas vindas do banco
+const formatDia = (d: string) => d ? new Date(d).getDate().toString().padStart(2, '0') : '??'
+const formatMesAno = (d: string) => d ? new Date(d).toLocaleDateString('pt-PT', { month: 'short', year: 'numeric' }) : '??'
 </script>
 
 <style scoped>
