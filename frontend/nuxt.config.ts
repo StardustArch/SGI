@@ -45,6 +45,12 @@ export default defineNuxtConfig({
         protocol: 'ws',
         host: 'localhost'
       }
+    },
+    optimizeDeps: {
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+      ]
     }
   },
 })

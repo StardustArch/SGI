@@ -892,35 +892,45 @@ class AdminDashboardView(APIView):
 # FIX: permission_classes corrigido — IsAnyAdminUser em vez de 3 permissões em AND
 # ---------------------------------------------------------------------------
 class ExportarRelatorioView(APIView):
-    """Exporta relatórios em PDF. Cada tipo de relatório ocupa a(s) sua(s)
-    própria(s) página(s) em paisagem; o financeiro é apresentado como
-    aluno × mês (não mais uma linha por mensalidade)."""
     permission_classes = [IsAuthenticated, IsAnyAdminUser]
 
     def get(self, request):
-        tipo = request.query_params.get('tipo')
         inicio = request.query_params.get('periodo_inicio')
         fim = request.query_params.get('periodo_fim')
 
-        if not tipo:
-            return Response({"erro": "Parâmetro 'tipo' é obrigatório."}, status=400)
+        perfis_user = set(request.user.perfis.values_list('nome_perfil', flat=True))
 
-        handlers = {
-            'financeiro': self._get_dados_financeiros,
-            'disciplinar': self._get_dados_disciplinares,
-            'ocupacao': self._get_dados_ocupacao,
-            'pedidos': self._get_dados_pedidos,
-            'completo': self._get_dados_completos,
-        }
+        # DEBUG temporário — remover depois de confirmar
+        # return Response({"perfis_detectados": list(perfis_user)})
 
-        if tipo not in handlers:
-            return Response({"erro": f"Tipo inválido. Opções: {', '.join(handlers.keys())}"}, status=400)
+        perfis_validos = {'Gestor', 'Financeiro', 'Disciplinar', 'Suporte'}
+        if not perfis_user & perfis_validos:
+            return Response({"erro": "Sem permissão para relatórios."}, status=403)
 
-        dados = handlers[tipo](inicio, fim)
-        return self._gerar_pdf(dados, tipo)
+        dados_completos = self._get_dados_completos(inicio, fim)
+        secoes = []
 
-    # -- consultas -----------------------------------------------------
+        # Mensalidades — apenas Financeiro ou Suporte
+        if perfis_user & {'Financeiro', 'Suporte'}:
+            secoes.append(('Mensalidades', 'pivot', dados_completos['financeiro']))
 
+        # Disciplinar — apenas Disciplinar ou Suporte (Gestor NÃO incluído aqui)
+        if perfis_user & {'Disciplinar', 'Suporte'}:
+            secoes.append(('Sanções', 'generica', dados_completos['disciplinar']['sancoes']))
+            secoes.append(('Presenças', 'generica', dados_completos['disciplinar']['presencas']))
+
+        # Pedidos — Gestor ou Suporte
+        if perfis_user & {'Gestor', 'Suporte'}:
+            secoes.append(('Pedidos de Saída', 'generica', dados_completos['pedidos']))
+
+        if not secoes:
+            return Response({"erro": "Nenhuma secção disponível para os seus perfis."}, status=400)
+
+        # ✅ Devolve também os perfis usados para auditoria (opcional)
+        # response['X-Perfis-Usados'] = ','.join(perfis_user & perfis_validos)
+
+        return self._gerar_pdf(secoes)
+    # ---------------------- Funções de consulta (mantidas) ----------------------
     def _get_dados_financeiros(self, inicio, fim):
         qs = Mensalidade.objects.filter(estudante__estado='Activo')
         if inicio:
@@ -950,11 +960,6 @@ class ExportarRelatorioView(APIView):
         )))
         return {'sancoes': sancao_df, 'presencas': presenca_df}
 
-    def _get_dados_ocupacao(self, inicio, fim):
-        return pd.DataFrame(list(Quarto.objects.all().values(
-            'bloco', 'capacidade_maxima', 'ocupacao_atual', 'genero_permitido', 'estado'
-        )))
-
     def _get_dados_pedidos(self, inicio, fim):
         qs = PedidoSaida.objects.all()
         if inicio:
@@ -966,15 +971,21 @@ class ExportarRelatorioView(APIView):
             'data_retorno_pretendida', 'estado', 'motivo'
         )))
 
+    def _get_dados_ocupacao(self, inicio, fim):
+        # (se quiser incluir ocupação)
+        return pd.DataFrame(list(Quarto.objects.all().values(
+            'bloco', 'capacidade_maxima', 'ocupacao_atual', 'genero_permitido', 'estado'
+        )))
+
     def _get_dados_completos(self, inicio, fim):
         return {
             'financeiro': self._get_dados_financeiros(inicio, fim),
             'disciplinar': self._get_dados_disciplinares(inicio, fim),
             'pedidos': self._get_dados_pedidos(inicio, fim),
+            # 'ocupacao': self._get_dados_ocupacao(inicio, fim),
         }
 
-    # -- pivot financeiro: aluno × mês ----------------------------------
-
+    # ---------------------- Funções auxiliares do PDF ----------------------
     def _mes_label(self, data):
         return f"{MESES_PT[data.month]}/{data.year % 100:02d}"
 
@@ -984,24 +995,20 @@ class ExportarRelatorioView(APIView):
             .order_by('nome_completo')
             .values_list('nome_completo', flat=True)
         )
-
         if df is None or df.empty:
             return pd.DataFrame({'Aluno': alunos_ativos})
-
         df = df.copy()
         df['mes_referencia'] = pd.to_datetime(df['mes_referencia'])
         df['mes_label'] = df['mes_referencia'].apply(self._mes_label)
         df['valor_exibido'] = df.apply(
             lambda r: r['valor_pago'] if r['estado'] == 'Pago' else None, axis=1
         )
-
         colunas_ordenadas = (
             df[['mes_referencia', 'mes_label']]
             .drop_duplicates()
             .sort_values('mes_referencia')['mes_label']
             .tolist()
         )
-
         pivot = df.pivot_table(
             index='estudante__nome_completo',
             columns='mes_label',
@@ -1012,13 +1019,16 @@ class ExportarRelatorioView(APIView):
         pivot = pivot.reset_index().rename(columns={'estudante__nome_completo': 'Aluno'})
         return pivot
 
-    # -- geração do PDF --------------------------------------------------
-
-    def _gerar_pdf(self, dados, tipo):
+    def _gerar_pdf(self, secoes):
+        """
+        Gera o PDF a partir de uma lista de secções.
+        Cada secção: (titulo, modo, df)
+        """
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = (
-            f'attachment; filename="relatorio_{tipo}_{timezone.now().strftime("%Y%m%d")}.pdf"'
+            f'attachment; filename="relatorio_{timezone.now().strftime("%Y%m%d_%H%M")}.pdf"'
         )
+
         doc = SimpleDocTemplate(
             response,
             pagesize=landscape(A4),
@@ -1027,8 +1037,8 @@ class ExportarRelatorioView(APIView):
             topMargin=1.5 * cm,
             bottomMargin=1.5 * cm,
         )
-        styles = getSampleStyleSheet()
 
+        styles = getSampleStyleSheet()
         titulo_estilo = ParagraphStyle(
             'TituloRelatorio', parent=styles['Title'], fontSize=16,
             textColor=colors.HexColor('#1a365d'), alignment=1, spaceAfter=8,
@@ -1095,7 +1105,6 @@ class ExportarRelatorioView(APIView):
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
             ]
             t.setStyle(TableStyle(estilo_zebra(estilo, len(linhas))))
-
             story.append(t)
             story.append(Spacer(1, 0.4 * cm))
             story.append(Paragraph(
@@ -1143,28 +1152,7 @@ class ExportarRelatorioView(APIView):
             t.setStyle(TableStyle(estilo_zebra(estilo, len(linhas))))
             story.append(t)
 
-        # cada item desta lista = uma página (ou mais, se não couber)
-        if tipo == 'completo':
-            secoes = [
-                ('Mensalidades', 'pivot', dados['financeiro']),
-                ('Sanções', 'generica', dados['disciplinar']['sancoes']),
-                ('Presenças', 'generica', dados['disciplinar']['presencas']),
-                ('Pedidos de Saída', 'generica', dados['pedidos']),
-            ]
-        elif tipo == 'disciplinar':
-            secoes = [
-                ('Sanções', 'generica', dados['sancoes']),
-                ('Presenças', 'generica', dados['presencas']),
-            ]
-        elif tipo == 'financeiro':
-            secoes = [('Mensalidades', 'pivot', dados)]
-        elif tipo == 'ocupacao':
-            secoes = [('Ocupação de Quartos', 'generica', dados)]
-        elif tipo == 'pedidos':
-            secoes = [('Pedidos de Saída', 'generica', dados)]
-        else:
-            secoes = [(tipo.capitalize(), 'generica', dados)]
-
+        # Percorre as secções e gera as respectivas tabelas
         for i, (titulo_secao, modo, df) in enumerate(secoes):
             if i > 0:
                 story.append(PageBreak())
@@ -1451,6 +1439,7 @@ class CriarUtilizadorStaffView(generics.CreateAPIView):
                 password=SENHA_PADRAO,
                 first_name=nome_partes[0],
                 last_name=nome_partes[1] if len(nome_partes) > 1 else '',
+                is_staff=True,
             )
             user.perfis.set(perfis_obj)
 

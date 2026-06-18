@@ -23,7 +23,7 @@ class UtilizadorManager(BaseUserManager):
             user.codigo_acesso = codigo_acesso
         elif telefone:
             user.telefone = telefone
-        elif not user.codigo_acesso and not user.telefone:
+        elif not user.is_staff and not user.is_superuser:
             while True:
                 novo = gerar_codigo_acesso()
                 if not self.model.objects.filter(codigo_acesso=novo).exists():

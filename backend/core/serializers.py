@@ -34,17 +34,15 @@ class CustomTokenObtainPairSerializer(serializers.Serializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    perfil_nome = serializers.SerializerMethodField()
+    perfis_nomes = serializers.SerializerMethodField()
     precisa_mudar_senha = serializers.SerializerMethodField()
 
     class Meta:
         model = Utilizador
-        fields = ['id', 'email', 'first_name', 'last_name', 'perfil_nome', 'precisa_mudar_senha']
+        fields = ['id', 'email', 'first_name', 'last_name', 'perfis_nomes', 'precisa_mudar_senha']
 
-    def get_perfil_nome(self, obj):
-        # Retorna o nome do primeiro perfil (caso exista)
-        primeiro_perfil = obj.perfis.first()
-        return primeiro_perfil.nome_perfil if primeiro_perfil else None
+    def get_perfis_nomes(self, obj):
+        return list(obj.perfis.values_list('nome_perfil', flat=True))
 
     def get_precisa_mudar_senha(self, obj):
         return obj.check_password('mudar1234')

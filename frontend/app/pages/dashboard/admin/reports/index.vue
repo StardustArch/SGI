@@ -10,7 +10,6 @@
         </p>
       </div>
       <div v-if="showExport" class="flex gap-3">
-
         <button @click="exportar('pdf')" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors flex items-center gap-2 min-h-[44px]">
           <BootstrapIcon name="file-pdf" class="w-4 h-4" />
           PDF
@@ -89,24 +88,24 @@
         <BootstrapIcon name="door-open" class="w-5 h-5 text-blue-500" />
         Pedidos de Saída (Mês)
       </h3>
- <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
-  <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-    <p class="text-amber-600 dark:text-amber-400 text-sm font-medium mb-1">Pendentes</p>
-    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.discipline?.sumario_pedidos?.total_pendentes || 0 }}</p>
-  </div>
-  <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-    <p class="text-blue-600 dark:text-blue-400 text-sm font-medium mb-1">Aguarda Encarregado</p>
-    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.discipline?.sumario_pedidos?.total_aguardando || 0 }}</p>
-  </div>
-  <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-    <p class="text-emerald-600 dark:text-emerald-400 text-sm font-medium mb-1">Aprovados</p>
-    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.discipline?.sumario_pedidos?.total_autorizados || 0 }}</p>
-  </div>
-  <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-    <p class="text-rose-600 dark:text-rose-400 text-sm font-medium mb-1">Rejeitados</p>
-    <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.discipline?.sumario_pedidos?.total_rejeitados || 0 }}</p>
-  </div>
-</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+          <p class="text-amber-600 dark:text-amber-400 text-sm font-medium mb-1">Pendentes</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.discipline?.sumario_pedidos?.total_pendentes || 0 }}</p>
+        </div>
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+          <p class="text-blue-600 dark:text-blue-400 text-sm font-medium mb-1">Aguarda Encarregado</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.discipline?.sumario_pedidos?.total_aguardando || 0 }}</p>
+        </div>
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+          <p class="text-emerald-600 dark:text-emerald-400 text-sm font-medium mb-1">Aprovados</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.discipline?.sumario_pedidos?.total_autorizados || 0 }}</p>
+        </div>
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+          <p class="text-rose-600 dark:text-rose-400 text-sm font-medium mb-1">Rejeitados</p>
+          <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ dashboardData?.discipline?.sumario_pedidos?.total_rejeitados || 0 }}</p>
+        </div>
+      </div>
     </div>
 
     <!-- Sanções por tipo -->
@@ -128,23 +127,22 @@ import { computed, ref, onMounted, inject } from 'vue'
 import { useApi } from '~/composables/useApi'
 
 const { api } = useApi()
+// Recebe userData do provider do layout
 const userData = inject<any>('userData')
-const perfilNome = computed(() => userData?.value?.perfil_nome)
+// Obtém a lista de perfis (array)
+const perfis = computed(() => userData?.value?.perfis_nomes || [])
 
-// Determina quais blocos mostrar baseado no perfil
+// Determina quais blocos mostrar baseado nos perfis (multi)
 const showFinanceiro = computed(() => {
-  const p = perfilNome.value
-  return p === 'Financeiro' || p === 'Suporte'
+  return perfis.value.some((p: string) => ['Financeiro', 'Suporte'].includes(p))
 })
 
 const showDisciplinar = computed(() => {
-  const p = perfilNome.value
-  return p === 'Disciplinar' || p === 'Suporte'
+  return perfis.value.some((p: string) => ['Disciplinar', 'Suporte'].includes(p))
 })
 
 const showPedidos = computed(() => {
-  const p = perfilNome.value
-  return p === 'Gestor' || p === 'Suporte'
+  return perfis.value.some((p: string) => ['Gestor', 'Suporte'].includes(p))
 })
 
 const descricaoPerfil = computed(() => {
@@ -169,13 +167,16 @@ async function carregarDashboard() {
     loading.value = false
   }
 }
-console.log(dashboardData)
-// Determinar tipo de relatório para exportação
+
+// Determinar tipo de relatório para exportação com base nos perfis
 const tipoRelatorio = computed(() => {
-  if (showFinanceiro.value && !showDisciplinar.value && !showPedidos.value) return 'financeiro'
-  if (showDisciplinar.value && !showFinanceiro.value && !showPedidos.value) return 'disciplinar'
-  if (showPedidos.value && !showFinanceiro.value && !showDisciplinar.value) return 'pedidos'
+  // Se tem todos os módulos, relatório completo
   if (showFinanceiro.value && showDisciplinar.value && showPedidos.value) return 'completo'
+  // Se tem financeiro e disciplinar mas não pedidos (não deve acontecer com Suporte, mas pode)
+  if (showFinanceiro.value && showDisciplinar.value) return 'completo' // ou 'financeiro+disciplinar'? Mas o backend não tem essa combinação; usamos completo
+  if (showFinanceiro.value) return 'financeiro'
+  if (showDisciplinar.value) return 'disciplinar'
+  if (showPedidos.value) return 'pedidos'
   return null
 })
 

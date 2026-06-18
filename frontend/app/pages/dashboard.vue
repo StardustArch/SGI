@@ -18,52 +18,13 @@
       <div v-if="pending" class="text-slate-500 dark:text-slate-400 mt-4 text-sm">A carregar...</div>
 
       <nav class="flex-1 mt-6 space-y-1">
-        <!-- Menu para GESTOR -->
-        <ul v-if="perfilNome === 'Gestor'">
-          <li><NuxtLink to="/dashboard/admin" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/students" class="nav-link"><BootstrapIcon name="people-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Gerir Estudantes</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/rooms" class="nav-link"><BootstrapIcon name="door-closed-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Gestão de Quartos</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/exits" class="nav-link"><BootstrapIcon name="door-open-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Triagem de Saídas</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/reports" class="nav-link"><BootstrapIcon name="bar-chart-line-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Relatórios</span></NuxtLink></li>
-        </ul>
-
-        <!-- Menu para FINANCEIRO -->
-        <ul v-else-if="perfilNome === 'Financeiro'">
-          <li><NuxtLink to="/dashboard/admin" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/finance" class="nav-link"><BootstrapIcon name="wallet-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Finanças</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/reports" class="nav-link"><BootstrapIcon name="bar-chart-line-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Relatórios Financeiros</span></NuxtLink></li>
-        </ul>
-
-        <!-- Menu para DISCIPLINAR -->
-        <ul v-else-if="perfilNome === 'Disciplinar'">
-          <li><NuxtLink to="/dashboard/admin" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/attendance" class="nav-link"><BootstrapIcon name="calendar-check-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Presenças</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/discipline" class="nav-link"><BootstrapIcon name="shield-exclamation" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Disciplina</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/reports" class="nav-link"><BootstrapIcon name="bar-chart-line-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Relatórios Disciplinares</span></NuxtLink></li>
-        </ul>
-
-        <!-- Menu para SUPORTE (acesso total) -->
-        <ul v-else-if="perfilNome === 'Suporte'">
-          <li><NuxtLink to="/dashboard/admin" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/students" class="nav-link"><BootstrapIcon name="people-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Gerir Estudantes</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/rooms" class="nav-link"><BootstrapIcon name="door-closed-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Gestão de Quartos</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/finance" class="nav-link"><BootstrapIcon name="wallet-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Finanças</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/attendance" class="nav-link"><BootstrapIcon name="calendar-check-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Presenças</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/exits" class="nav-link"><BootstrapIcon name="door-open-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Triagem de Saídas</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/discipline" class="nav-link"><BootstrapIcon name="shield-exclamation" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Disciplina</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/reports" class="nav-link"><BootstrapIcon name="bar-chart-line-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Relatórios</span></NuxtLink></li>
-        </ul>
-
-        <!-- Menu para ESTUDANTE -->
-        <ul v-else-if="perfilNome === 'Estudante'">
-          <li><NuxtLink to="/dashboard/student" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/student/me" class="nav-link"><BootstrapIcon name="cash-coin" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Hist. Financeiro</span></NuxtLink></li>
-        </ul>
-
-        <!-- Menu para ENCARREGADO -->
-        <ul v-else-if="perfilNome === 'Encarregado'">
-          <li><NuxtLink to="/dashboard/guardian" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/guardian/exits" class="nav-link"><BootstrapIcon name="arrow-up-circle-fill" class="nav-icon" /><span v-if="isSidebarOpen" class="nav-text">Pedidos de Saída</span></NuxtLink></li>
+        <ul>
+          <li v-for="link in menuLinks" :key="link.to">
+            <NuxtLink :to="link.to" class="nav-link">
+              <BootstrapIcon :name="link.icon" class="nav-icon" />
+              <span v-if="isSidebarOpen" class="nav-text">{{ link.label }}</span>
+            </NuxtLink>
+          </li>
         </ul>
       </nav>
 
@@ -107,42 +68,13 @@
     >
       <div v-if="pending" class="text-slate-500 dark:text-slate-400 mt-4 text-sm">A carregar...</div>
       <nav class="flex-1 mt-6 space-y-1">
-        <!-- Mesma estrutura condicional sem v-if="isSidebarOpen" -->
-        <ul v-if="perfilNome === 'Gestor'">
-          <li><NuxtLink to="/dashboard/admin" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/students" class="nav-link"><BootstrapIcon name="people-fill" class="nav-icon" /><span class="nav-text">Gerir Estudantes</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/rooms" class="nav-link"><BootstrapIcon name="door-closed-fill" class="nav-icon" /><span class="nav-text">Gestão de Quartos</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/exits" class="nav-link"><BootstrapIcon name="door-open-fill" class="nav-icon" /><span class="nav-text">Triagem de Saídas</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/reports" class="nav-link"><BootstrapIcon name="bar-chart-line-fill" class="nav-icon" /><span class="nav-text">Relatórios</span></NuxtLink></li>
-        </ul>
-        <ul v-else-if="perfilNome === 'Financeiro'">
-          <li><NuxtLink to="/dashboard/admin" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/finance" class="nav-link"><BootstrapIcon name="wallet-fill" class="nav-icon" /><span class="nav-text">Finanças</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/reports" class="nav-link"><BootstrapIcon name="bar-chart-line-fill" class="nav-icon" /><span class="nav-text">Relatórios Financeiros</span></NuxtLink></li>
-        </ul>
-        <ul v-else-if="perfilNome === 'Disciplinar'">
-          <li><NuxtLink to="/dashboard/admin" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/attendance" class="nav-link"><BootstrapIcon name="calendar-check-fill" class="nav-icon" /><span class="nav-text">Presenças</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/discipline" class="nav-link"><BootstrapIcon name="shield-exclamation" class="nav-icon" /><span class="nav-text">Disciplina</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/reports" class="nav-link"><BootstrapIcon name="bar-chart-line-fill" class="nav-icon" /><span class="nav-text">Relatórios Disciplinares</span></NuxtLink></li>
-        </ul>
-        <ul v-else-if="perfilNome === 'Suporte'">
-          <li><NuxtLink to="/dashboard/admin" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/students" class="nav-link"><BootstrapIcon name="people-fill" class="nav-icon" /><span class="nav-text">Gerir Estudantes</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/rooms" class="nav-link"><BootstrapIcon name="door-closed-fill" class="nav-icon" /><span class="nav-text">Gestão de Quartos</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/finance" class="nav-link"><BootstrapIcon name="wallet-fill" class="nav-icon" /><span class="nav-text">Finanças</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/attendance" class="nav-link"><BootstrapIcon name="calendar-check-fill" class="nav-icon" /><span class="nav-text">Presenças</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/exits" class="nav-link"><BootstrapIcon name="door-open-fill" class="nav-icon" /><span class="nav-text">Triagem de Saídas</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/discipline" class="nav-link"><BootstrapIcon name="shield-exclamation" class="nav-icon" /><span class="nav-text">Disciplina</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/admin/reports" class="nav-link"><BootstrapIcon name="bar-chart-line-fill" class="nav-icon" /><span class="nav-text">Relatórios</span></NuxtLink></li>
-        </ul>
-        <ul v-else-if="perfilNome === 'Estudante'">
-          <li><NuxtLink to="/dashboard/student" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/student/me" class="nav-link"><BootstrapIcon name="cash-coin" class="nav-icon" /><span class="nav-text">Hist. Financeiro</span></NuxtLink></li>
-        </ul>
-        <ul v-else-if="perfilNome === 'Encarregado'">
-          <li><NuxtLink to="/dashboard/guardian" class="nav-link"><BootstrapIcon name="house-fill" class="nav-icon" /><span class="nav-text">Visão Geral</span></NuxtLink></li>
-          <li><NuxtLink to="/dashboard/guardian/exits" class="nav-link"><BootstrapIcon name="arrow-up-circle-fill" class="nav-icon" /><span class="nav-text">Pedidos de Saída</span></NuxtLink></li>
+        <ul>
+          <li v-for="link in menuLinks" :key="link.to">
+            <NuxtLink :to="link.to" class="nav-link">
+              <BootstrapIcon :name="link.icon" class="nav-icon" />
+              <span class="nav-text">{{ link.label }}</span>
+            </NuxtLink>
+          </li>
         </ul>
       </nav>
 
@@ -210,39 +142,126 @@ async function logout() {
   await router.push('/')
 }
 
-const perfilNome = computed(() => userData.value?.perfil_nome)
+// Lista de perfis do utilizador (array)
+const perfis = computed(() => userData.value?.perfis_nomes || [])
 
+// Links do menu com base nos perfis
+const menuLinks = computed(() => {
+  const links = []
+
+  // Verifica se é um perfil administrativo
+  const isAdmin = perfis.value.some((p: string) => ['Gestor', 'Financeiro', 'Disciplinar', 'Suporte'].includes(p))
+
+  if (isAdmin) {
+    links.push({ to: '/dashboard/admin', icon: 'house-fill', label: 'Visão Geral' })
+  }
+
+  // Gestor / Suporte
+  if (perfis.value.includes('Gestor') || perfis.value.includes('Suporte')) {
+    links.push(
+      { to: '/dashboard/admin/students', icon: 'people-fill', label: 'Gerir Estudantes' },
+      { to: '/dashboard/admin/rooms', icon: 'door-closed-fill', label: 'Gestão de Quartos' },
+      { to: '/dashboard/admin/exits', icon: 'door-open-fill', label: 'Triagem de Saídas' }
+    )
+  }
+
+  // Financeiro / Suporte
+  if (perfis.value.includes('Financeiro') || perfis.value.includes('Suporte')) {
+    links.push(
+      { to: '/dashboard/admin/finance', icon: 'wallet-fill', label: 'Finanças' }
+    )
+  }
+
+  // Disciplinar / Suporte
+  if (perfis.value.includes('Disciplinar') || perfis.value.includes('Suporte')) {
+    links.push(
+      { to: '/dashboard/admin/attendance', icon: 'calendar-check-fill', label: 'Presenças' },
+      { to: '/dashboard/admin/discipline', icon: 'shield-exclamation', label: 'Disciplina' }
+    )
+  }
+
+  // Relatórios (para todos os administrativos)
+  if (isAdmin) {
+    links.push(
+      { to: '/dashboard/admin/reports', icon: 'bar-chart-line-fill', label: 'Relatórios' }
+    )
+  }
+
+  // Gestão de Utilizadores (apenas Gestor ou Suporte)
+  if (perfis.value.includes('Gestor') || perfis.value.includes('Suporte')) {
+    links.push(
+      { to: '/dashboard/admin/users', icon: 'people', label: 'Utilizadores' }
+    )
+  }
+
+  // Perfil Estudante (único)
+  if (perfis.value.includes('Estudante')) {
+    links.push(
+      { to: '/dashboard/student', icon: 'house-fill', label: 'Visão Geral' },
+      { to: '/dashboard/student/me', icon: 'cash-coin', label: 'Hist. Financeiro' }
+    )
+  }
+
+  // Perfil Encarregado (único)
+  if (perfis.value.includes('Encarregado')) {
+    links.push(
+      { to: '/dashboard/guardian', icon: 'house-fill', label: 'Visão Geral' },
+      { to: '/dashboard/guardian/exits', icon: 'arrow-up-circle-fill', label: 'Pedidos de Saída' }
+    )
+  }
+
+  return links
+})
+
+// Link para o perfil (dependendo do primeiro perfil administrativo ou estudante/encarregado)
 const profileLink = computed(() => {
   if (!userData.value) return null
-  const perfil = perfilNome.value
-  if (perfil === 'Gestor' || perfil === 'Financeiro' || perfil === 'Disciplinar' || perfil === 'Suporte') {
+
+  if (perfis.value.some((p: string) => ['Gestor', 'Financeiro', 'Disciplinar', 'Suporte'].includes(p))) {
     return '/dashboard/admin/me'
-  } else if (perfil === 'Estudante') {
+  } else if (perfis.value.includes('Estudante')) {
     return '/dashboard/student/me/security'
-  } else if (perfil === 'Encarregado') {
+  } else if (perfis.value.includes('Encarregado')) {
     return '/dashboard/guardian/me'
   }
   return null
 })
+// Redirecionamento automático para a Visão Geral adequada
+watch(
+  [userData, () => route.path],
+  ([newUser, currentPath]) => {
+    if (!newUser || menuLinks.value.length === 0) return
 
-// Redireciona para página de perfil se a senha for a padrão
+    // Se estiver na raiz do dashboard ou em "/dashboard" (sem subrota)
+    const isRoot = currentPath === '/dashboard' || currentPath === '/dashboard/'
+    if (!isRoot) return
+
+    // Encontra o primeiro link que seja "Visão Geral" ou, se não houver,
+    // o primeiro link do menu
+    const targetLink = menuLinks.value.find(link => link.label === 'Visão Geral') || menuLinks.value[0]
+    if (targetLink && targetLink.to !== currentPath) {
+      router.replace(targetLink.to)
+    }
+  },
+  { immediate: true }
+)
+// Redireciona para mudança de senha se necessário
 watch([userData, () => route.path], ([newUser, newPath]) => {
   if (!newUser) return
 
   if (newUser.precisa_mudar_senha) {
-    let perfilDestino = ''
-    const perfil = perfilNome.value
-    if (perfil === 'Gestor' || perfil === 'Financeiro' || perfil === 'Disciplinar' || perfil === 'Suporte') {
-      perfilDestino = '/dashboard/admin/me'
-    } else if (perfil === 'Estudante') {
-      perfilDestino = '/dashboard/student/me'
-    } else if (perfil === 'Encarregado') {
-      perfilDestino = '/dashboard/guardian/me'
+    let destino = ''
+    if (perfis.value.some((p: string) => ['Gestor', 'Financeiro', 'Disciplinar', 'Suporte'].includes(p))) {
+      destino = '/dashboard/admin/me'
+    } else if (perfis.value.includes('Estudante')) {
+      destino = '/dashboard/student/me'
+    } else if (perfis.value.includes('Encarregado')) {
+      destino = '/dashboard/guardian/me'
     }
 
-    if (perfilDestino && newPath !== perfilDestino) {
-      console.warn("⚠️ Segurança: Mudança de senha obrigatória.")
-      router.replace(perfilDestino)
+    if (destino && newPath !== destino) {
+      console.warn('⚠️ Segurança: Mudança de senha obrigatória.')
+      router.replace(destino)
     }
   }
 }, { immediate: true })
