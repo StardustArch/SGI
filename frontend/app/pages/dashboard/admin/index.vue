@@ -61,27 +61,70 @@
           </div>
 
           <!-- Card Ocupação -->
-          <div class="bg-white dark:bg-slate-900 p-5 md:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Ocupação</p>
-                <h3 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
-                  {{ ocupacaoPercent }}%
-                </h3>
-                <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                  {{ dashboard.administrative.total_ocupadas }}/{{ dashboard.administrative.total_vagas }} camas
-                </p>
-              </div>
-              <div :class="[
-                'h-12 w-12 rounded-lg flex items-center justify-center',
-                ocupacaoPercent > 90 
-                  ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' 
-                  : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
-              ]">
-                <BootstrapIcon name="door-closed-fill" class="w-6 h-6" />
-              </div>
-            </div>
-          </div>
+<!-- Card Ocupação -->
+<!-- Card Ocupação -->
+<div class="bg-white dark:bg-slate-900 p-5 md:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+  <div class="flex items-center justify-between">
+    <div>
+      <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Ocupação</p>
+      <h3 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+        {{ ocupacaoPercent }}%
+      </h3>
+      <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+        {{ dashboard.administrative.total_ocupadas }} / {{ dashboard.administrative.total_vagas }} camas ocupadas
+      </p>
+    </div>
+    <div :class="[
+      'h-12 w-12 rounded-lg flex items-center justify-center shrink-0',
+      ocupacaoPercent > 90 
+        ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' 
+        : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+    ]">
+      <BootstrapIcon name="door-closed-fill" class="w-6 h-6" />
+    </div>
+  </div>
+  
+  <!-- Distribuição por género (apenas se houver dados) -->
+  <div 
+    v-if="dashboard.administrative.total_masculino !== undefined && dashboard.administrative.total_feminino !== undefined" 
+    class="mt-5 pt-4 border-t border-slate-200 dark:border-slate-700"
+  >
+    <!-- Cabeçalho da distribuição -->
+    <div class="flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
+      <span class="flex items-center gap-1.5">
+        <BootstrapIcon name="gender-male" class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+        Masculino
+        <span class="font-bold text-slate-800 dark:text-slate-200">{{ percentualMasculino }}%</span>
+      </span>
+      <span class="flex items-center gap-1.5">
+        <BootstrapIcon name="gender-female" class="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" />
+        Feminino
+        <span class="font-bold text-slate-800 dark:text-slate-200">{{ percentualFeminino }}%</span>
+      </span>
+    </div>
+
+    <!-- Barra de progresso dividida -->
+    <div class="relative w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+      <div 
+        class="absolute left-0 top-0 h-full bg-blue-600 dark:bg-blue-500 transition-all duration-300"
+        :style="{ width: percentualMasculino + '%' }"
+      ></div>
+      <div 
+        class="absolute left-0 top-0 h-full bg-pink-600 dark:bg-pink-500 transition-all duration-300"
+        :style="{ width: percentualFeminino + '%', marginLeft: percentualMasculino + '%' }"
+      ></div>
+    </div>
+
+    <!-- Totais absolutos -->
+    <div class="flex justify-between text-[11px] text-slate-400 dark:text-slate-500 mt-2">
+      <span>{{ dashboard.administrative.total_masculino }} alunos</span>
+      <span class="text-slate-300 dark:text-slate-600">|</span>
+      <span>{{ dashboard.administrative.total_feminino }} alunas</span>
+      <span class="text-slate-300 dark:text-slate-600">|</span>
+      <span>{{ dashboard.administrative.total_estudantes_ativos }} total</span>
+    </div>
+  </div>
+</div> 
 
           <!-- Card Pedidos Pendentes -->
           <div class="bg-white dark:bg-slate-900 p-5 md:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -225,6 +268,20 @@ const ocupacaoPercent = computed(() => {
   const totalOcupadas = dashboard.value.administrative.total_ocupadas || 0
   if (totalVagas === 0) return 0
   return Math.round((totalOcupadas / totalVagas) * 100)
+})
+
+const percentualMasculino = computed(() => {
+  const total = dashboard.value?.administrative?.total_estudantes_ativos || 0
+  const masc = dashboard.value?.administrative?.total_masculino || 0
+  if (total === 0) return 0
+  return Math.round((masc / total) * 100)
+})
+
+const percentualFeminino = computed(() => {
+  const total = dashboard.value?.administrative?.total_estudantes_ativos || 0
+  const fem = dashboard.value?.administrative?.total_feminino || 0
+  if (total === 0) return 0
+  return Math.round((fem / total) * 100)
 })
 
 const formatMoeda = (valor: number) => {

@@ -20,6 +20,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from datetime import date
 from .models import (
     Utilizador, Perfil, Encarregado, Estudante,
     Mensalidade, Sancao, PresencaEstudo, PedidoSaida, Quarto,
@@ -38,7 +39,7 @@ from .serializers import (
     ChangePasswordSerializer,
     PasswordResetRequestSerializer, SetNewPasswordSerializer,
     GerarMensalidadesLoteSerializer,
-    TransferirQuartoSerializer,CustomTokenObtainPairSerializer
+    TransferirQuartoSerializer,CustomTokenObtainPairSerializer, CriarUtilizadorStaffSerializer,UserListAdminSerializer,UserUpdateAdminSerializer,
 )
 from .permissions import (
     IsAdminUser, IsAnyAdminUser,
@@ -58,18 +59,23 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
-from reportlab.lib.pagesizes import A4
+
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from django.http import HttpResponse
 from .utils import gerar_numero_recibo
 import io
 import pandas as pd
-from io import BytesIO
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+
+MESES_PT = {
+    1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun',
+    7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez',
+}
 
 # ---------------------------------------------------------------------------
 # PAGINAÇÃO PADRÃO
@@ -241,9 +247,6 @@ class RegistoCompletoView(generics.CreateAPIView):
 
                 # Gera email para o estudante se não fornecido (opcional)
                 email_estudante = dados_est.get('email', '')
-                if not email_estudante:
-                    import time
-                    email_estudante = f"aluno_{int(time.time())}_{dados_est['nome_completo'].replace(' ', '_')}@internato.local"
 
                 # Cria o utilizador do estudante (código gerado automaticamente)
                 user_est = User.objects.create_user(
@@ -425,48 +428,45 @@ class AdminMensalidadeListView(generics.ListAPIView):
 
 
 class GerarMensalidadesLoteView(APIView):
-    """
-    POST: Cria mensalidades 'Pendente' para TODOS os estudantes activos
-    de uma vez. Ignora quem já tem mensalidade para o mês. 
-    Poupa ~200 cliques/mês ao admin.
-    """
     permission_classes = [IsAuthenticated, IsFinanceiroOuSuporte]
 
     def post(self, request):
         serializer = GerarMensalidadesLoteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        data_ref = serializer.validated_data['mes_referencia'].replace(day=1)
-        valor = serializer.validated_data.get('valor_padrao', 0.0)
+        ano = serializer.validated_data['ano']
+        valor = serializer.validated_data.get('valor_padrao', 2500.00)
 
         estudantes_ativos = Estudante.objects.filter(estado='Activo')
-        total = estudantes_ativos.count()
+        total_estudantes = estudantes_ativos.count()
         criados = 0
         ignorados = 0
 
         with transaction.atomic():
             for estudante in estudantes_ativos:
-                _, created = Mensalidade.objects.get_or_create(
-                    estudante=estudante,
-                    mes_referencia=data_ref,
-                    defaults={
-                        'estado': 'Pendente',
-                        'valor_pago': valor,
-                        'admin_id_registo': request.user,
-                    }
-                )
-                if created:
-                    criados += 1
-                else:
-                    ignorados += 1
+                for mes in range(1, 13):  # Janeiro a Dezembro
+                    mes_referencia = date(ano, mes, 1)
+                    _, created = Mensalidade.objects.get_or_create(
+                        estudante=estudante,
+                        mes_referencia=mes_referencia,
+                        defaults={
+                            'estado': 'Pendente',
+                            'valor_pago': valor,
+                            'admin_id_registo': request.user,
+                            'tipo': 'Mensalidade'  # ou pode ser configurável
+                        }
+                    )
+                    if created:
+                        criados += 1
+                    else:
+                        ignorados += 1
 
         return Response({
-            "mensagem": f"Processamento concluído para {data_ref.strftime('%B de %Y')}.",
-            "total_estudantes": total,
+            "mensagem": f"Processamento anual concluído para {ano}.",
+            "total_estudantes": total_estudantes,
             "mensalidades_criadas": criados,
             "ja_existiam": ignorados,
         }, status=status.HTTP_201_CREATED)
-
 
 # ---------------------------------------------------------------------------
 # RECIBO PDF
@@ -522,7 +522,7 @@ class GerarReciboView(APIView):
         dados_estudante = [
             ["Nome:", estudante.nome_completo],
             ["Curso:", estudante.curso],
-            ["Quarto:", estudante.quarto.numero if estudante.quarto else "Não atribuído"],
+            ["Bloco:", estudante.quarto.bloco if estudante.quarto else "Não atribuído"],
             ["Encarregado:", encarregado.nome_completo],
         ]
 
@@ -677,13 +677,13 @@ class PresencaListView(generics.ListAPIView):
 
 class QuartoListCreateView(generics.ListCreateAPIView):
     """Lista quartos com filtros. POST: cria novo quarto."""
-    queryset = Quarto.objects.all().order_by('bloco', 'numero')
+    queryset = Quarto.objects.all().order_by('bloco')
     serializer_class = QuartoSerializer
     permission_classes = [IsAuthenticated, IsGestorOuSuporte]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['genero_permitido', 'estado', 'bloco']
-    search_fields = ['numero', 'bloco']
+    search_fields = ['bloco']
 
 
 class QuartoDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -711,6 +711,7 @@ class AdminPedidoSaidaListView(generics.ListAPIView):
     serializer_class = PedidoSaidaListAdminSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
     pagination_class = StandardResultsSetPagination
+    filterset_fields = ['estado', 'estudante']  # adicionar 'estudante'
 
     def get_queryset(self):
         queryset = PedidoSaida.objects.all().order_by('data_submissao')
@@ -801,14 +802,16 @@ class AdminDashboardView(APIView):
 
     def get(self, request):
         user = request.user
-        perfil = user.perfil.nome_perfil if user.perfil else None
+        perfis_user = set(user.perfis.values_list('nome_perfil', flat=True))
 
-        if perfil not in ['Gestor', 'Financeiro', 'Disciplinar', 'Suporte']:
+        if not perfis_user & {'Gestor', 'Financeiro', 'Disciplinar', 'Suporte'}:
             return Response({"erro": "Acesso negado."}, status=status.HTTP_403_FORBIDDEN)
 
         def admin_data():
             total_vagas = Quarto.objects.aggregate(t=Sum('capacidade_maxima'))['t'] or 0
             total_ocupadas = Quarto.objects.aggregate(t=Sum('ocupacao_atual'))['t'] or 0
+            total_masculino = Estudante.objects.filter(estado='Activo', genero='M').count()
+            total_feminino = Estudante.objects.filter(estado='Activo', genero='F').count()
             return {
                 'total_quartos': Quarto.objects.count(),
                 'total_vagas': total_vagas,
@@ -816,6 +819,8 @@ class AdminDashboardView(APIView):
                 'vagas_disponiveis': total_vagas - total_ocupadas,
                 'total_estudantes_ativos': Estudante.objects.filter(estado='Activo').count(),
                 'pedidos_saida_pendentes': PedidoSaida.objects.filter(estado='Pendente').count(),
+                'total_masculino': total_masculino,
+                'total_feminino': total_feminino,
             }
 
         def finance_data():
@@ -858,9 +863,7 @@ class AdminDashboardView(APIView):
                 .order_by('-total')
             )
             # FIX: usa estados reais do modelo
-            sumario_pedidos = PedidoSaida.objects.filter(
-                data_submissao__date__gte=primeiro_dia
-            ).aggregate(
+            sumario_pedidos = PedidoSaida.objects.aggregate(
                 total_pendentes=Count('id', filter=Q(estado='Pendente')),
                 total_aguardando=Count('id', filter=Q(estado='Aguardando_Encarregado')),
                 total_rejeitados=Count('id', filter=Q(estado='Rejeitado')),
@@ -874,15 +877,11 @@ class AdminDashboardView(APIView):
             }
 
         response_data = {}
-        if perfil == 'Gestor':
+        if perfis_user & {'Gestor', 'Suporte'}:
             response_data['administrative'] = admin_data()
-        elif perfil == 'Financeiro':
+        if perfis_user & {'Financeiro', 'Suporte'}:
             response_data['finance'] = finance_data()
-        elif perfil == 'Disciplinar':
-            response_data['discipline'] = discipline_data()
-        elif perfil == 'Suporte':
-            response_data['administrative'] = admin_data()
-            response_data['finance'] = finance_data()
+        if perfis_user & {'Disciplinar', 'Gestor', 'Suporte'}:  # Gestor precisa do sumário de pedidos
             response_data['discipline'] = discipline_data()
 
         return Response(response_data, status=status.HTTP_200_OK)
@@ -892,15 +891,14 @@ class AdminDashboardView(APIView):
 # EXPORTAÇÃO DE RELATÓRIOS
 # FIX: permission_classes corrigido — IsAnyAdminUser em vez de 3 permissões em AND
 # ---------------------------------------------------------------------------
-
 class ExportarRelatorioView(APIView):
-    # FIX: antes tinha [IsGestorOuSuporte, IsFinanceiroOuSuporte, IsDisciplinarOuSuporte]
-    # que em DRF é AND — impossível satisfazer. Agora usa IsAnyAdminUser (OR).
+    """Exporta relatórios em PDF. Cada tipo de relatório ocupa a(s) sua(s)
+    própria(s) página(s) em paisagem; o financeiro é apresentado como
+    aluno × mês (não mais uma linha por mensalidade)."""
     permission_classes = [IsAuthenticated, IsAnyAdminUser]
 
     def get(self, request):
         tipo = request.query_params.get('tipo')
-        formato = request.query_params.get('formato', 'xlsx')
         inicio = request.query_params.get('periodo_inicio')
         fim = request.query_params.get('periodo_fim')
 
@@ -919,23 +917,18 @@ class ExportarRelatorioView(APIView):
             return Response({"erro": f"Tipo inválido. Opções: {', '.join(handlers.keys())}"}, status=400)
 
         dados = handlers[tipo](inicio, fim)
+        return self._gerar_pdf(dados, tipo)
 
-        if formato == 'xlsx':
-            return self._gerar_excel(dados, tipo)
-        elif formato == 'pdf':
-            return self._gerar_pdf(dados, tipo)
-        else:
-            return Response({"erro": "Formato inválido. Use 'xlsx' ou 'pdf'."}, status=400)
+    # -- consultas -----------------------------------------------------
 
     def _get_dados_financeiros(self, inicio, fim):
-        qs = Mensalidade.objects.all()
+        qs = Mensalidade.objects.filter(estudante__estado='Activo')
         if inicio:
             qs = qs.filter(mes_referencia__gte=inicio)
         if fim:
             qs = qs.filter(mes_referencia__lte=fim)
         return pd.DataFrame(list(qs.values(
-            'estudante__nome_completo',
-            'mes_referencia', 'valor_pago', 'estado', 'metodo_pagamento'
+            'estudante__nome_completo', 'mes_referencia', 'valor_pago', 'estado'
         )))
 
     def _get_dados_disciplinares(self, inicio, fim):
@@ -945,8 +938,7 @@ class ExportarRelatorioView(APIView):
         if fim:
             sancao_qs = sancao_qs.filter(data_ocorrencia__lte=fim)
         sancao_df = pd.DataFrame(list(sancao_qs.values(
-            'estudante__nome_completo',
-            'data_ocorrencia', 'tipo_sancao', 'descricao'
+            'estudante__nome_completo', 'data_ocorrencia', 'tipo_sancao', 'descricao'
         )))
         presenca_qs = PresencaEstudo.objects.all()
         if inicio:
@@ -954,15 +946,13 @@ class ExportarRelatorioView(APIView):
         if fim:
             presenca_qs = presenca_qs.filter(data_presenca__lte=fim)
         presenca_df = pd.DataFrame(list(presenca_qs.values(
-            'estudante__nome_completo',
-            'data_presenca', 'estado'
+            'estudante__nome_completo', 'data_presenca', 'estado'
         )))
         return {'sancoes': sancao_df, 'presencas': presenca_df}
 
     def _get_dados_ocupacao(self, inicio, fim):
         return pd.DataFrame(list(Quarto.objects.all().values(
-            'numero', 'bloco', 'capacidade_maxima', 'ocupacao_atual',
-            'genero_permitido', 'estado'
+            'bloco', 'capacidade_maxima', 'ocupacao_atual', 'genero_permitido', 'estado'
         )))
 
     def _get_dados_pedidos(self, inicio, fim):
@@ -972,9 +962,8 @@ class ExportarRelatorioView(APIView):
         if fim:
             qs = qs.filter(data_submissao__lte=fim)
         return pd.DataFrame(list(qs.values(
-            'estudante__nome_completo',
-            'data_submissao', 'data_saida_pretendida', 'data_retorno_pretendida',
-            'estado', 'motivo'
+            'estudante__nome_completo', 'data_submissao', 'data_saida_pretendida',
+            'data_retorno_pretendida', 'estado', 'motivo'
         )))
 
     def _get_dados_completos(self, inicio, fim):
@@ -984,73 +973,215 @@ class ExportarRelatorioView(APIView):
             'pedidos': self._get_dados_pedidos(inicio, fim),
         }
 
-    def _gerar_excel(self, dados, tipo):
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            if tipo == 'completo':
-                dados['financeiro'].to_excel(writer, sheet_name='Mensalidades', index=False)
-                dados['disciplinar']['sancoes'].to_excel(writer, sheet_name='Sanções', index=False)
-                dados['disciplinar']['presencas'].to_excel(writer, sheet_name='Presenças', index=False)
-                dados['pedidos'].to_excel(writer, sheet_name='Pedidos de Saída', index=False)
-            elif tipo == 'disciplinar':
-                dados['sancoes'].to_excel(writer, sheet_name='Sanções', index=False)
-                dados['presencas'].to_excel(writer, sheet_name='Presenças', index=False)
-            else:
-                dados.to_excel(writer, sheet_name=tipo.capitalize(), index=False)
-        output.seek(0)
-        response = HttpResponse(
-            output.read(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    # -- pivot financeiro: aluno × mês ----------------------------------
+
+    def _mes_label(self, data):
+        return f"{MESES_PT[data.month]}/{data.year % 100:02d}"
+
+    def _pivotar_financeiro(self, df):
+        alunos_ativos = list(
+            Estudante.objects.filter(estado='Activo')
+            .order_by('nome_completo')
+            .values_list('nome_completo', flat=True)
         )
-        response['Content-Disposition'] = (
-            f'attachment; filename="relatorio_{tipo}_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+
+        if df is None or df.empty:
+            return pd.DataFrame({'Aluno': alunos_ativos})
+
+        df = df.copy()
+        df['mes_referencia'] = pd.to_datetime(df['mes_referencia'])
+        df['mes_label'] = df['mes_referencia'].apply(self._mes_label)
+        df['valor_exibido'] = df.apply(
+            lambda r: r['valor_pago'] if r['estado'] == 'Pago' else None, axis=1
         )
-        return response
+
+        colunas_ordenadas = (
+            df[['mes_referencia', 'mes_label']]
+            .drop_duplicates()
+            .sort_values('mes_referencia')['mes_label']
+            .tolist()
+        )
+
+        pivot = df.pivot_table(
+            index='estudante__nome_completo',
+            columns='mes_label',
+            values='valor_exibido',
+            aggfunc='sum',
+        )
+        pivot = pivot.reindex(index=alunos_ativos, columns=colunas_ordenadas)
+        pivot = pivot.reset_index().rename(columns={'estudante__nome_completo': 'Aluno'})
+        return pivot
+
+    # -- geração do PDF --------------------------------------------------
 
     def _gerar_pdf(self, dados, tipo):
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = (
             f'attachment; filename="relatorio_{tipo}_{timezone.now().strftime("%Y%m%d")}.pdf"'
         )
-        doc = SimpleDocTemplate(response, pagesize=A4)
+        doc = SimpleDocTemplate(
+            response,
+            pagesize=landscape(A4),
+            leftMargin=1.2 * cm,
+            rightMargin=1.2 * cm,
+            topMargin=1.5 * cm,
+            bottomMargin=1.5 * cm,
+        )
         styles = getSampleStyleSheet()
-        story = [
-            Paragraph(f"Relatório — {tipo.capitalize()}", styles['Title']),
-            Spacer(1, 0.5 * cm),
-            Paragraph(f"Gerado em {timezone.now().strftime('%d/%m/%Y %H:%M')}", styles['Normal']),
-            Spacer(1, 1 * cm),
-        ]
 
-        def adicionar_tabela(titulo, df):
+        titulo_estilo = ParagraphStyle(
+            'TituloRelatorio', parent=styles['Title'], fontSize=16,
+            textColor=colors.HexColor('#1a365d'), alignment=1, spaceAfter=8,
+        )
+        subtitulo_estilo = ParagraphStyle(
+            'SubtituloRelatorio', parent=styles['Heading2'], fontSize=13,
+            textColor=colors.HexColor('#2d3748'), alignment=1, spaceAfter=4,
+        )
+        cabecalho_tabela = ParagraphStyle(
+            'CabecalhoTabela', parent=styles['Heading4'], fontSize=9,
+            textColor=colors.white, alignment=1, fontName='Helvetica-Bold',
+        )
+        celula_normal = ParagraphStyle('CelulaNormal', parent=styles['Normal'], fontSize=8, alignment=0)
+        celula_direita = ParagraphStyle('CelulaDireita', parent=styles['Normal'], fontSize=8, alignment=2)
+        celula_centro = ParagraphStyle('CelulaCentro', parent=styles['Normal'], fontSize=8, alignment=1)
+
+        story = []
+
+        def cabecalho_secao(titulo_secao):
+            story.append(Paragraph("INSTITUTO INDUSTRIAL E COMERCIAL DA BEIRA", titulo_estilo))
+            story.append(Paragraph(f"RELATÓRIO — {titulo_secao.upper()}", subtitulo_estilo))
+            story.append(Paragraph(f"Gerado em {timezone.now().strftime('%d/%m/%Y às %H:%M')}", styles['Normal']))
+            story.append(Spacer(1, 0.6 * cm))
+
+        def estilo_zebra(base, total_linhas):
+            for i in range(1, total_linhas):
+                cor = '#edf2f7' if i % 2 == 0 else '#f7fafc'
+                base.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor(cor)))
+            return base
+
+        def tabela_financeiro_pivot(df_financeiro):
+            pivot = self._pivotar_financeiro(df_financeiro)
+            if pivot.empty or len(pivot.columns) <= 1:
+                story.append(Paragraph("Mensalidades: Sem dados para o período seleccionado.", styles['Normal']))
+                return
+
+            colunas = pivot.columns.tolist()
+            linhas = [[Paragraph(c, cabecalho_tabela) for c in colunas]]
+
+            for _, row in pivot.iterrows():
+                linha = [Paragraph(str(row['Aluno']), celula_normal)]
+                for col in colunas[1:]:
+                    valor = row[col]
+                    if valor is None or pd.isna(valor):
+                        linha.append(Paragraph('—', celula_centro))
+                    else:
+                        texto = f"{valor:,.0f}".replace(',', ' ')
+                        linha.append(Paragraph(texto, celula_direita))
+                linhas.append(linha)
+
+            largura_aluno = 5 * cm
+            largura_mes = (doc.width - largura_aluno) / max(len(colunas) - 1, 1)
+            col_widths = [largura_aluno] + [largura_mes] * (len(colunas) - 1)
+
+            t = Table(linhas, colWidths=col_widths, repeatRows=1)
+            estilo = [
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a365d')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e0')),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ]
+            t.setStyle(TableStyle(estilo_zebra(estilo, len(linhas))))
+
+            story.append(t)
+            story.append(Spacer(1, 0.4 * cm))
+            story.append(Paragraph(
+                "<font size=8 color='#718096'>Valores em Meticais (MZN). "
+                "Células em branco indicam mês pendente ou em atraso.</font>",
+                styles['Normal'],
+            ))
+
+        def tabela_generica(titulo, df):
             if df is None or df.empty:
                 story.append(Paragraph(f"{titulo}: Sem dados", styles['Normal']))
-            else:
-                story.append(Paragraph(titulo, styles['Heading2']))
-                data = [df.columns.tolist()] + df.fillna('').values.tolist()
-                t = Table(data)
-                t.setStyle(TableStyle([
-                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ]))
-                story.append(t)
-            story.append(Spacer(1, 0.5 * cm))
+                return
 
+            cabecalhos = df.columns.tolist()
+            linhas = [[Paragraph(col.replace('_', ' ').title(), cabecalho_tabela) for col in cabecalhos]]
+
+            for _, row in df.iterrows():
+                linha = []
+                for col in cabecalhos:
+                    valor = row[col]
+                    eh_valor = 'valor' in col.lower() or 'pago' in col.lower()
+                    if valor is None or pd.isna(valor):
+                        texto = ''
+                    elif isinstance(valor, (int, float)):
+                        texto = f"{valor:,.2f} MZN".replace(',', ' ') if eh_valor else str(valor)
+                    elif isinstance(valor, pd.Timestamp):
+                        texto = valor.strftime('%d/%m/%Y')
+                    else:
+                        texto = str(valor)
+                    linha.append(Paragraph(texto, celula_direita if eh_valor else celula_normal))
+                linhas.append(linha)
+
+            col_widths = [doc.width / len(cabecalhos)] * len(cabecalhos)
+            t = Table(linhas, colWidths=col_widths, repeatRows=1)
+            estilo = [
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a365d')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e0')),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]
+            t.setStyle(TableStyle(estilo_zebra(estilo, len(linhas))))
+            story.append(t)
+
+        # cada item desta lista = uma página (ou mais, se não couber)
         if tipo == 'completo':
-            adicionar_tabela("Mensalidades", dados['financeiro'])
-            adicionar_tabela("Sanções", dados['disciplinar']['sancoes'])
-            adicionar_tabela("Presenças", dados['disciplinar']['presencas'])
-            adicionar_tabela("Pedidos de Saída", dados['pedidos'])
+            secoes = [
+                ('Mensalidades', 'pivot', dados['financeiro']),
+                ('Sanções', 'generica', dados['disciplinar']['sancoes']),
+                ('Presenças', 'generica', dados['disciplinar']['presencas']),
+                ('Pedidos de Saída', 'generica', dados['pedidos']),
+            ]
         elif tipo == 'disciplinar':
-            adicionar_tabela("Sanções", dados['sancoes'])
-            adicionar_tabela("Presenças", dados['presencas'])
+            secoes = [
+                ('Sanções', 'generica', dados['sancoes']),
+                ('Presenças', 'generica', dados['presencas']),
+            ]
+        elif tipo == 'financeiro':
+            secoes = [('Mensalidades', 'pivot', dados)]
+        elif tipo == 'ocupacao':
+            secoes = [('Ocupação de Quartos', 'generica', dados)]
+        elif tipo == 'pedidos':
+            secoes = [('Pedidos de Saída', 'generica', dados)]
         else:
-            adicionar_tabela(tipo.capitalize(), dados)
+            secoes = [(tipo.capitalize(), 'generica', dados)]
+
+        for i, (titulo_secao, modo, df) in enumerate(secoes):
+            if i > 0:
+                story.append(PageBreak())
+            cabecalho_secao(titulo_secao)
+            if modo == 'pivot':
+                tabela_financeiro_pivot(df)
+            else:
+                tabela_generica(titulo_secao, df)
+
+        story.append(Spacer(1, 1 * cm))
+        story.append(Paragraph(
+            "<font size=8 color='#718096'>Documento gerado automaticamente pelo SGI - IICB Beira</font>",
+            styles['Normal'],
+        ))
 
         doc.build(story)
         return response
-
-
 # ---------------------------------------------------------------------------
 # PERFIL DO ESTUDANTE (endpoints do próprio estudante autenticado)
 # ---------------------------------------------------------------------------
@@ -1293,3 +1424,86 @@ class OpcoesView(APIView):
             'quarto_estados': fmt(Quarto.ESTADO_CHOICES),
             'generos': fmt(Estudante.GENERO_CHOICES),
         }, status=status.HTTP_200_OK)
+
+
+class CriarUtilizadorStaffView(generics.CreateAPIView):
+    """Cria um novo utilizador interno com um ou vários perfis
+    (Gestor, Financeiro, Disciplinar, Suporte — em qualquer combinação)."""
+    serializer_class = CriarUtilizadorStaffSerializer
+    permission_classes = [IsAuthenticated, IsGestorOuSuporte]  # ver nota abaixo
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        dados = serializer.validated_data
+
+        User = get_user_model()
+        SENHA_PADRAO = "mudar1234"
+
+        perfis_obj = Perfil.objects.filter(nome_perfil__in=dados['perfis'])
+        if perfis_obj.count() != len(dados['perfis']):
+            return Response({"erro": "Um ou mais perfis indicados não existem na BD."}, status=400)
+
+        with transaction.atomic():
+            nome_partes = dados['nome_completo'].split(' ', 1)
+            user = User.objects.create_user(
+                email=dados['email'],
+                password=SENHA_PADRAO,
+                first_name=nome_partes[0],
+                last_name=nome_partes[1] if len(nome_partes) > 1 else '',
+            )
+            user.perfis.set(perfis_obj)
+
+        return Response({
+            "status": "sucesso",
+            "utilizador_id": user.pk,
+            "perfis": dados['perfis'],
+            "senha_temporaria": SENHA_PADRAO,
+        }, status=status.HTTP_201_CREATED)
+
+# views.py (acrescentar)
+
+class AdminUtilizadorListView(generics.ListAPIView):
+    """Lista utilizadores internos (staff) com filtros e pesquisa."""
+    serializer_class = UserListAdminSerializer
+    permission_classes = [IsAuthenticated, IsGestorOuSuporte]
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
+    search_fields = ['email', 'first_name', 'last_name']
+    filterset_fields = ['perfis__nome_perfil', 'is_active']
+
+    def get_queryset(self):
+        # Apenas utilizadores que têm pelo menos um perfil interno
+        return Utilizador.objects.filter(
+            perfis__nome_perfil__in=['Gestor', 'Financeiro', 'Disciplinar', 'Suporte']
+        ).distinct().order_by('first_name')
+
+
+class AdminUtilizadorDetailView(generics.RetrieveUpdateAPIView):
+    """GET / PATCH para editar dados e perfis de um utilizador interno."""
+    queryset = Utilizador.objects.filter(
+        perfis__nome_perfil__in=['Gestor', 'Financeiro', 'Disciplinar', 'Suporte']
+    ).distinct()
+    serializer_class = UserUpdateAdminSerializer
+    permission_classes = [IsAuthenticated, IsGestorOuSuporte]
+
+    def perform_update(self, serializer):
+        # Se for desativado, remove permissões de acesso
+        user = serializer.save()
+        if not user.is_active:
+            # opcional: notificar ou logout forçado
+            pass
+
+
+class AdminUtilizadorToggleActiveView(APIView):
+    """PATCH: activar/desactivar um utilizador (is_active)."""
+    permission_classes = [IsAuthenticated, IsGestorOuSuporte]
+
+    def patch(self, request, pk):
+        user = get_object_or_404(Utilizador, pk=pk)
+        # Verifica se tem perfil interno
+        if not user.perfis.filter(nome_perfil__in=['Gestor','Financeiro','Disciplinar','Suporte']).exists():
+            return Response({"erro": "Utilizador não é staff."}, status=400)
+        user.is_active = not user.is_active
+        user.save(update_fields=['is_active'])
+        return Response({"status": "Estado alterado", "is_active": user.is_active})

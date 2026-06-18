@@ -189,7 +189,7 @@ const { data, pending } = await useAsyncData(`student-full-history-${route.param
   const saidas = saidasResp.results ?? saidasResp
   return { estudante, mensalidades, sancoes, presencas, saidas }
 })
-
+console.log(data.value)
 const estudante = computed(() => data.value?.estudante)
 const mensalidades = computed(() => data.value?.mensalidades || [])
 const sancoes = computed(() => data.value?.sancoes || [])

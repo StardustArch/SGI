@@ -58,80 +58,203 @@
           Editar Informações
         </h3>
 
-        <form @submit.prevent="handleUpdate" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Mensagens de erro global -->
+        <div v-if="errorMsg" class="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 text-sm border border-red-200 dark:border-red-800/30 flex items-start gap-2">
+          <BootstrapIcon name="exclamation-triangle-fill" class="w-5 h-5 shrink-0 mt-0.5" />
+          <span>{{ errorMsg }}</span>
+        </div>
+        <div v-if="successMsg" class="mb-4 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 text-sm border border-emerald-200 dark:border-emerald-800/30 flex items-start gap-2">
+          <BootstrapIcon name="check-circle-fill" class="w-5 h-5 shrink-0 mt-0.5" />
+          <span>{{ successMsg }}</span>
+        </div>
+
+        <form @submit.prevent="handleUpdate" class="grid grid-cols-1 md:grid-cols-2 gap-4" novalidate>
           <!-- Nome Completo -->
           <div>
-            <label class="label">Nome Completo</label>
-            <input v-model="form.nome_completo" type="text" class="input" />
+            <label class="label">Nome Completo *</label>
+            <input 
+              v-model="form.nome_completo" 
+              type="text" 
+              class="input" 
+              :class="{ 'border-red-500 focus:ring-red-500': errors.nome_completo }"
+              data-field="nome_completo"
+              @blur="validateField('nome_completo')"
+            />
+            <p v-if="errors.nome_completo" class="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+              <BootstrapIcon name="exclamation-circle" class="w-3.5 h-3.5" />
+              {{ errors.nome_completo }}
+            </p>
           </div>
+
           <!-- Curso -->
           <div>
-            <label class="label">Curso</label>
-            <input v-model="form.curso" type="text" class="input" />
+            <label class="label">Curso *</label>
+            <input 
+              v-model="form.curso" 
+              type="text" 
+              class="input" 
+              :class="{ 'border-red-500 focus:ring-red-500': errors.curso }"
+              data-field="curso"
+              @blur="validateField('curso')"
+            />
+            <p v-if="errors.curso" class="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+              <BootstrapIcon name="exclamation-circle" class="w-3.5 h-3.5" />
+              {{ errors.curso }}
+            </p>
           </div>
-          <!-- Quarto (desabilitado) -->
+
+          <!-- Bloco (ex-Quarto) - apenas leitura -->
           <div>
-            <label class="label">Quarto</label>
-            <input v-model="form.quarto_numero" type="text" disabled class="input bg-slate-100 dark:bg-slate-800 cursor-not-allowed" />
+            <label class="label">Bloco</label>
+            <input 
+              v-model="form.bloco" 
+              type="text" 
+              disabled 
+              class="input bg-slate-100 dark:bg-slate-800 cursor-not-allowed" 
+            />
           </div>
+
           <!-- Estado -->
           <div>
-            <label class="label">Estado</label>
+            <label class="label">Estado *</label>
             <select v-model="form.estado" class="input">
               <option value="Activo">Activo</option>
               <option value="Inactivo">Inactivo</option>
             </select>
           </div>
+
           <!-- Data Nascimento -->
           <div>
-            <label class="label">Data de Nascimento</label>
-            <input v-model="form.data_nascimento" type="date" class="input" />
+            <label class="label">Data de Nascimento *</label>
+            <input 
+              v-model="form.data_nascimento" 
+              type="date" 
+              class="input" 
+              :class="{ 'border-red-500 focus:ring-red-500': errors.data_nascimento }"
+              data-field="data_nascimento"
+              @change="validateField('data_nascimento')"
+              @blur="validateField('data_nascimento')"
+            />
+            <p v-if="errors.data_nascimento" class="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+              <BootstrapIcon name="exclamation-circle" class="w-3.5 h-3.5" />
+              {{ errors.data_nascimento }}
+            </p>
           </div>
+
           <!-- BI -->
           <div>
-            <label class="label">BI</label>
-            <input v-model="form.bi" type="text" class="input" />
+            <label class="label">BI (10 dígitos + 2 letras maiúsculas)</label>
+            <input 
+              v-model="form.bi" 
+              type="text" 
+              class="input" 
+              :class="{ 'border-red-500 focus:ring-red-500': errors.bi }"
+              data-field="bi"
+              @blur="validateField('bi')"
+              placeholder="1234567890AB"
+            />
+            <p v-if="errors.bi" class="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+              <BootstrapIcon name="exclamation-circle" class="w-3.5 h-3.5" />
+              {{ errors.bi }}
+            </p>
           </div>
+
           <!-- NUIT -->
           <div>
-            <label class="label">NUIT</label>
-            <input v-model="form.nuit" type="text" class="input" />
+            <label class="label">NUIT (apenas números)</label>
+            <input 
+              v-model="form.nuit" 
+              type="text" 
+              class="input" 
+              :class="{ 'border-red-500 focus:ring-red-500': errors.nuit }"
+              data-field="nuit"
+              @blur="validateField('nuit')"
+            />
+            <p v-if="errors.nuit" class="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+              <BootstrapIcon name="exclamation-circle" class="w-3.5 h-3.5" />
+              {{ errors.nuit }}
+            </p>
           </div>
+
           <!-- Ano Lectivo -->
           <div>
-            <label class="label">Ano Lectivo</label>
-            <input v-model="form.ano_lectivo" type="text" class="input" />
+            <label class="label">Ano Lectivo *</label>
+            <select 
+              v-model="form.ano_lectivo" 
+              class="input" 
+              :class="{ 'border-red-500 focus:ring-red-500': errors.ano_lectivo }"
+              data-field="ano_lectivo"
+              @change="validateField('ano_lectivo')"
+            >
+              <option value="2024/2025">2024/2025</option>
+              <option value="2025/2026">2025/2026</option>
+              <option value="2026/2027">2026/2027</option>
+            </select>
+            <p v-if="errors.ano_lectivo" class="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+              <BootstrapIcon name="exclamation-circle" class="w-3.5 h-3.5" />
+              {{ errors.ano_lectivo }}
+            </p>
           </div>
+
           <!-- Nacionalidade -->
           <div>
             <label class="label">Nacionalidade</label>
             <input v-model="form.nacionalidade" type="text" class="input" />
           </div>
+
           <!-- Condições de Saúde (full width) -->
           <div class="md:col-span-2">
             <label class="label">Condições de Saúde</label>
             <textarea v-model="form.condicao_saude" rows="2" class="input"></textarea>
           </div>
+
           <!-- Telefone Pessoal -->
           <div>
-            <label class="label">Telefone Pessoal</label>
-            <input v-model="form.telefone_pessoal" type="tel" class="input" />
+            <label class="label">Telefone Pessoal (ex: 84 123 4567)</label>
+            <input 
+              v-model="form.telefone_pessoal" 
+              type="tel" 
+              class="input" 
+              :class="{ 'border-red-500 focus:ring-red-500': errors.telefone_pessoal }"
+              data-field="telefone_pessoal"
+              @blur="validateField('telefone_pessoal')"
+              placeholder="84 123 4567"
+            />
+            <p v-if="errors.telefone_pessoal" class="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+              <BootstrapIcon name="exclamation-circle" class="w-3.5 h-3.5" />
+              {{ errors.telefone_pessoal }}
+            </p>
           </div>
+
           <!-- Email Pessoal -->
           <div>
-            <label class="label">Email Pessoal</label>
-            <input v-model="form.email_pessoal" type="email" class="input" />
+            <label class="label">Email Pessoal (opcional)</label>
+            <input 
+              v-model="form.email_pessoal" 
+              type="email" 
+              class="input" 
+              :class="{ 'border-red-500 focus:ring-red-500': errors.email_pessoal }"
+              data-field="email_pessoal"
+              @blur="validateField('email_pessoal')"
+            />
+            <p v-if="errors.email_pessoal" class="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+              <BootstrapIcon name="exclamation-circle" class="w-3.5 h-3.5" />
+              {{ errors.email_pessoal }}
+            </p>
           </div>
+
           <!-- Morada (full width) -->
           <div class="md:col-span-2">
             <label class="label">Morada</label>
             <textarea v-model="form.morada" rows="2" class="input"></textarea>
           </div>
+
           <!-- Nome da Mãe -->
           <div>
             <label class="label">Nome da Mãe</label>
             <input v-model="form.nome_mae" type="text" class="input" />
           </div>
+
           <!-- Nome do Pai -->
           <div>
             <label class="label">Nome do Pai</label>
@@ -187,11 +310,14 @@ import { useRoute } from 'vue-router'
 const { api } = useApi()
 const route = useRoute()
 const updating = ref(false)
+const errorMsg = ref<string | null>(null)
+const successMsg = ref<string | null>(null)
 
+// --- Formulário ---
 const form = reactive({
   nome_completo: '',
   curso: '',
-  quarto_numero: '',
+  bloco: '',
   estado: '',
   email: '',
   data_nascimento: '',
@@ -208,17 +334,105 @@ const form = reactive({
 })
 const encarregado = ref<any>(null)
 
+// --- Estado de erros ---
+const errors = ref<Record<string, string>>({
+  nome_completo: '',
+  curso: '',
+  data_nascimento: '',
+  bi: '',
+  telefone_pessoal: '',
+  nuit: '',
+  email_pessoal: '',
+  ano_lectivo: '',
+})
+
+// --- Helpers de validação ---
+const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+const isOnlyDigits = (str: string) => /^\d+$/.test(str)
+const isValidBI = (bi: string) => /^\d{10}[A-Z]{2}$/.test(bi)
+const isValidMocambiquePhone = (phone: string) => {
+  const digits = phone.replace(/\s/g, '')
+  return /^8[2-9]\d{7}$/.test(digits)
+}
+
+const calcularIdade = (dataNasc: string) => {
+  if (!dataNasc) return 0
+  const nasc = new Date(dataNasc)
+  const hoje = new Date()
+  let idade = hoje.getFullYear() - nasc.getFullYear()
+  const m = hoje.getMonth() - nasc.getMonth()
+  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
+    idade--
+  }
+  return idade
+}
+
+// --- Validação de campo individual ---
+const validateField = (field: string) => {
+  let msg = ''
+  
+  switch (field) {
+    case 'nome_completo':
+      if (!form.nome_completo?.trim()) msg = 'Nome completo é obrigatório.'
+      break
+    case 'curso':
+      if (!form.curso?.trim()) msg = 'Curso é obrigatório.'
+      break
+    case 'data_nascimento':
+      if (form.data_nascimento) {
+        const idade = calcularIdade(form.data_nascimento)
+        if (idade < 15) msg = 'O estudante deve ter pelo menos 15 anos.'
+        else if (idade > 100) msg = 'Data de nascimento inválida (muito antiga).'
+      } else {
+        msg = 'Data de nascimento é obrigatória.'
+      }
+      break
+    case 'bi':
+      if (form.bi && !isValidBI(form.bi)) msg = 'BI inválido. Use 10 dígitos + 2 letras maiúsculas (ex: 1234567890AB).'
+      break
+    case 'telefone_pessoal':
+      if (form.telefone_pessoal && !isValidMocambiquePhone(form.telefone_pessoal)) 
+        msg = 'Telefone inválido. Use 9 dígitos começando com 8 (ex: 84 123 4567).'
+      break
+    case 'nuit':
+      if (form.nuit && !isOnlyDigits(form.nuit)) msg = 'NUIT deve conter apenas números.'
+      break
+    case 'email_pessoal':
+      if (form.email_pessoal && !isValidEmail(form.email_pessoal)) msg = 'Email inválido.'
+      break
+    case 'ano_lectivo':
+      if (!form.ano_lectivo) msg = 'Ano lectivo é obrigatório.'
+      break
+    default:
+      break
+  }
+  
+  errors.value[field] = msg
+}
+
+// --- Valida todos os campos, retorna true se válido ---
+const validateForm = (): boolean => {
+  const fields = [
+    'nome_completo', 'curso', 'data_nascimento',
+    'bi', 'telefone_pessoal', 'nuit', 'email_pessoal', 'ano_lectivo'
+  ]
+  fields.forEach(f => validateField(f))
+  return Object.values(errors.value).every(msg => msg === '')
+}
+
+// --- Carregar dados do aluno ---
 const { data: aluno, pending } = await useAsyncData('admin-student-detail', 
   () => api<any>(`/admin/estudantes/${route.params.id}/`)
 )
 
 watch(aluno, (val) => {
+  console.log('Dados do aluno carregados:', val)
   if (val) {
-    form.nome_completo = val.nome_completo
-    form.curso = val.curso
-    form.quarto_numero = val.quarto_numero
-    form.estado = val.estado
-    form.email = val.email
+    form.nome_completo = val.nome_completo || ''
+    form.curso = val.curso || ''
+    form.bloco = val.bloco ||  ''
+    form.estado = val.estado || 'Activo'
+    form.email = val.email || ''
     form.data_nascimento = val.data_nascimento || ''
     form.bi = val.bi || ''
     form.telefone_pessoal = val.telefone_pessoal || ''
@@ -234,8 +448,22 @@ watch(aluno, (val) => {
   }
 }, { immediate: true })
 
+// --- Submissão ---
 async function handleUpdate() {
+  // Validar formulário
+  if (!validateForm()) {
+    const firstError = Object.keys(errors.value).find(key => errors.value[key])
+    if (firstError) {
+      const el = document.querySelector(`[data-field="${firstError}"]`) as HTMLElement
+      if (el) el.focus()
+    }
+    return
+  }
+
   updating.value = true
+  errorMsg.value = null
+  successMsg.value = null
+
   try {
     await api(`/admin/estudantes/${route.params.id}/`, {
       method: 'PATCH',
@@ -256,9 +484,15 @@ async function handleUpdate() {
         nome_pai: form.nome_pai
       }
     })
-    alert("Dados do aluno atualizados com sucesso!")
-  } catch (e) {
-    alert("Erro ao atualizar dados.")
+    successMsg.value = "Dados do aluno actualizados com sucesso!"
+    // Revalidar após 2 segundos
+    setTimeout(() => successMsg.value = null, 4000)
+  } catch (e: any) {
+    if (e.response?._data?.erro) {
+      errorMsg.value = `Erro: ${e.response._data.erro}`
+    } else {
+      errorMsg.value = "Erro ao actualizar dados. Tente novamente."
+    }
   } finally {
     updating.value = false
   }
@@ -272,5 +506,15 @@ async function handleUpdate() {
 
 .input {
   @apply w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors;
+}
+
+/* Estilo para campos com erro */
+.input.border-red-500 {
+  border-color: #ef4444;
+}
+
+.input.border-red-500:focus {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
 }
 </style>

@@ -48,101 +48,94 @@
 
     <!-- Grid de Pedidos -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-      <div 
-        v-for="pedido in pedidos" 
-        :key="pedido.id"
-        class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden"
-      >
-        <!-- Barra de status -->
-        <div :class="['h-1.5 w-full', getStatusColor(pedido.estado)]"></div>
-        
-        <div class="p-5 md:p-6 space-y-4">
-          <!-- Cabeçalho do card -->
-          <div class="flex flex-wrap justify-between items-start gap-3">
-            <div class="flex items-center gap-3">
-              <div class="h-12 w-12 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-semibold text-base border border-blue-100 dark:border-blue-800 shrink-0">
-                {{ pedido.estudante_nome?.charAt(0).toUpperCase() }}
-              </div>
-              <div>
-                <h3 class="font-semibold text-slate-900 dark:text-white">{{ pedido.estudante_nome }}</h3>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Submetido em: {{ formatDate(pedido.data_submissao) }}</p>
-              </div>
-            </div>
-            <span :class="[
-              'px-2.5 py-0.5 rounded-md text-xs font-medium border',
-              getStatusBadge(pedido.estado)
-            ]">
-              {{ pedido.estado }}
-            </span>
-          </div>
+<div 
+  v-for="pedido in pedidos" 
+  :key="pedido.id"
+  class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden"
+>
+  <div :class="['h-1.5 w-full', getStatusColor(pedido.estado)]"></div>
 
-          <!-- Informações de destino/transporte -->
-          <div v-if="pedido.destino || pedido.cidade_destino || pedido.meio_transporte" class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-              <div v-if="pedido.cidade_destino">
-                <span class="text-slate-500 dark:text-slate-400 font-medium">Cidade:</span>
-                <span class="font-medium ml-1 text-slate-700 dark:text-slate-300">{{ pedido.cidade_destino }}</span>
-              </div>
-              <div v-if="pedido.destino">
-                <span class="text-slate-500 dark:text-slate-400 font-medium">Destino:</span>
-                <span class="font-medium ml-1 truncate max-w-[150px] text-slate-700 dark:text-slate-300" :title="pedido.destino">{{ pedido.destino }}</span>
-              </div>
-              <div v-if="pedido.meio_transporte">
-                <span class="text-slate-500 dark:text-slate-400 font-medium">Transporte:</span>
-                <span class="font-medium ml-1 text-slate-700 dark:text-slate-300">{{ pedido.meio_transporte }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Datas -->
-          <div class="grid grid-cols-2 gap-3">
-            <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
-              <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Saída</p>
-              <p class="font-semibold text-rose-600 dark:text-rose-400">{{ formatDateShort(pedido.data_saida_pretendida) }}</p>
-            </div>
-            <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
-              <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Retorno</p>
-              <p class="font-semibold text-emerald-600 dark:text-emerald-400">{{ formatDateShort(pedido.data_retorno_pretendida) }}</p>
-            </div>
-          </div>
-
-          <!-- Motivo -->
-          <div class="bg-slate-50 dark:bg-slate-800/30 p-3 rounded-lg border border-slate-200 dark:border-slate-700 italic text-sm text-slate-600 dark:text-slate-300">
-            "{{ pedido.motivo }}"
-          </div>
-
-          <!-- Ações (apenas para pedidos pendentes) -->
-          <div v-if="pedido.estado === 'Pendente'" class="flex flex-col gap-3 pt-2">
-            <textarea 
-              v-model="observacoes[pedido.id]" 
-              placeholder="Motivo da rejeição (obrigatório se rejeitar) ou observação administrativa..."
-              class="w-full text-sm p-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              rows="2"
-            ></textarea>
-            
-            <div class="grid grid-cols-2 gap-3">
-              <button 
-                @click="decidirPedido(pedido.id, 'Rejeitado')"
-                class="py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 font-medium text-sm text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:border-rose-200 dark:hover:border-rose-800 transition-colors"
-              >
-                Rejeitar Pedido
-              </button>
-              <button 
-                @click="decidirPedido(pedido.id, 'Aguardando_Encarregado')"
-                class="py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors"
-              >
-                Aprovar (Fase 1)
-              </button>
-            </div>
-            <button 
-              @click="decidirPedido(pedido.id, 'Autorizado', true)"
-              class="py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition-colors"
-            >
-              Autorizar (Contacto Telefónico)
-            </button>
-          </div>
+  <div class="p-5 space-y-3">
+    <!-- Cabeçalho -->
+    <div class="flex flex-wrap justify-between items-start gap-3">
+      <div class="flex items-center gap-3">
+        <div class="h-11 w-11 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-semibold text-base border border-blue-100 dark:border-blue-800 shrink-0">
+          {{ pedido.estudante_nome?.charAt(0).toUpperCase() }}
+        </div>
+        <div>
+          <h3 class="font-semibold text-slate-900 dark:text-white">{{ pedido.estudante_nome }}</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ formatDate(pedido.data_submissao) }}</p>
         </div>
       </div>
+      <span :class="['px-2.5 py-0.5 rounded-md text-xs font-medium border', getStatusBadge(pedido.estado)]">
+        {{ pedido.estado }}
+      </span>
+    </div>
+
+    <!-- Resumo compacto numa linha só -->
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
+      <span class="flex items-center gap-1">
+        <BootstrapIcon name="box-arrow-right" class="w-3.5 h-3.5 text-rose-500" />
+        {{ formatDateShort(pedido.data_saida_pretendida) }}
+      </span>
+      <span class="flex items-center gap-1">
+        <BootstrapIcon name="box-arrow-in-left" class="w-3.5 h-3.5 text-emerald-500" />
+        {{ formatDateShort(pedido.data_retorno_pretendida) }}
+      </span>
+      <span v-if="pedido.cidade_destino || pedido.destino" class="flex items-center gap-1 truncate max-w-[200px]">
+        <BootstrapIcon name="geo-alt" class="w-3.5 h-3.5 text-slate-400" />
+        {{ pedido.cidade_destino }}<template v-if="pedido.destino"> · {{ pedido.destino }}</template>
+      </span>
+      <span v-if="pedido.meio_transporte" class="flex items-center gap-1">
+        <BootstrapIcon name="signpost-2" class="w-3.5 h-3.5 text-slate-400" />
+        {{ pedido.meio_transporte }}
+      </span>
+    </div>
+
+    <!-- Motivo original da saída -->
+    <p class="text-sm italic text-slate-500 dark:text-slate-400">"{{ pedido.motivo }}"</p>
+
+    <!-- Conteúdo extra: só nos rejeitados -->
+    <div 
+      v-if="pedido.estado === 'Rejeitado' && pedido.motivo_rejeicao"
+      class="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/40 rounded-lg p-3"
+    >
+      <p class="text-xs font-medium text-rose-700 dark:text-rose-400 uppercase mb-1">Motivo da Rejeição</p>
+      <p class="text-sm text-rose-800 dark:text-rose-300">{{ pedido.motivo_rejeicao }}</p>
+    </div>
+
+    <!-- Ações (apenas pendentes) -->
+    <div v-if="pedido.estado === 'Pendente'" class="flex flex-col gap-3 pt-2">
+      <textarea 
+        v-model="observacoes[pedido.id]" 
+        placeholder="Motivo da rejeição (obrigatório se rejeitar) ou observação administrativa..."
+        class="w-full text-sm p-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+        rows="2"
+      ></textarea>
+
+      <div class="grid grid-cols-2 gap-3">
+        <button 
+          @click="decidirPedido(pedido.id, 'Rejeitado')"
+          class="py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 font-medium text-sm text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:border-rose-200 dark:hover:border-rose-800 transition-colors"
+        >
+          Rejeitar Pedido
+        </button>
+        <button 
+          @click="decidirPedido(pedido.id, 'Aguardando_Encarregado')"
+          class="py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors"
+        >
+          Aprovar (Fase 1)
+        </button>
+      </div>
+      <button 
+        @click="decidirPedido(pedido.id, 'Autorizado', true)"
+        class="py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition-colors"
+      >
+        Autorizar (Contacto Telefónico)
+      </button>
+    </div>
+  </div>
+</div>
     </div>
 
   </div>
@@ -162,13 +155,13 @@ const { data: pedidosRaw, pending, refresh } = await useAsyncData(
   () => api<any>('/admin/pedidos-saida/', { params: { estado: filtroEstado.value } }),
   { watch: [filtroEstado] }
 )
-
+console.log(pedidosRaw)
 const pedidos = computed(() => {
   const raw = pedidosRaw.value
   if (!raw) return []
   return raw.results ?? raw
 })
-
+console.log(pedidos)
 // 2. Ação de Aprovar/Rejeitar
 async function decidirPedido(id: number, novoEstado: string, aprovacaoDireta = false) {
   const obs = observacoes[id] || ""

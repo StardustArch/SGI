@@ -88,19 +88,22 @@ def _enviar_email(destinatario: str, assunto: str, corpo: str) -> bool:
 
 def _notificar_encarregado(
     encarregado, assunto: str, mensagem_sms: str, corpo_email: str
-):
+) -> bool:
     """
     Tenta SMS primeiro (realista para Moçambique).
     Se não tiver SMS configurado, tenta email como fallback.
+    Devolve True se algum dos dois foi efectivamente enviado.
     """
     telefone = getattr(encarregado, "telefone_principal", None)
     email = getattr(encarregado, "email_contacto", None)
 
-    sms_enviado = _enviar_sms(telefone, mensagem_sms) if telefone else False
+    if telefone and _enviar_sms(telefone, mensagem_sms):
+        return True
 
-    if not sms_enviado and email:
-        _enviar_email(email, assunto, corpo_email)
+    if email:
+        return _enviar_email(email, assunto, corpo_email)
 
+    return False
 
 # ---------------------------------------------------------------------------
 # SIGNAL 1 — Ocupação do Quarto (CRÍTICO para consistência de dados)
@@ -159,13 +162,11 @@ def notificar_sancao(sender, instance, created, **kwargs):
     logger.info(f"[SINAL] Nova sanção ID={sancao.id} para {estudante.nome_completo}")
 
     assunto = f"[SGI-IICB] Ocorrência disciplinar — {estudante.nome_completo}"
-
     mensagem_sms = (
         f"IICB Internato: O seu educando {estudante.nome_completo} "
         f"recebeu uma ocorrência disciplinar ({sancao.tipo_sancao}) "
         f"em {sancao.data_ocorrencia}. Contacte a direcção para mais info."
     )
-
     corpo_email = f"""
 Exmo(a). Sr(a). {encarregado.nome_completo},
 
@@ -182,12 +183,13 @@ Com os melhores cumprimentos,
 Direcção do Internato — IICB
     """
 
-    _notificar_encarregado(encarregado, assunto, mensagem_sms, corpo_email)
+    sucesso = _notificar_encarregado(encarregado, assunto, mensagem_sms, corpo_email)
 
-    # Marcar como notificado para rastreabilidade
-    Sancao.objects.filter(pk=sancao.pk).update(notificado_encarregado=True)
-
-
+    # Só marca como notificado se a notificação automática saiu de facto.
+    # Se falhar (ou não estiver configurada), o valor definido no formulário
+    # (ou pelo botão "Marcar como Notificado") é respeitado.
+    if sucesso:
+        Sancao.objects.filter(pk=sancao.pk).update(notificado_encarregado=True)
 # ---------------------------------------------------------------------------
 # SIGNAL 3 — Mensalidade paga: confirmar ao encarregado
 # ---------------------------------------------------------------------------

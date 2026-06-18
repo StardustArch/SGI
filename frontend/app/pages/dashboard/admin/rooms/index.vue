@@ -136,10 +136,6 @@
           <form @submit.prevent="saveQuarto" class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="label">Número *</label>
-                <input v-model="roomForm.numero" type="text" class="input" required />
-              </div>
-              <div>
                 <label class="label">Bloco *</label>
                 <input v-model="roomForm.bloco" type="text" class="input" required />
               </div>
@@ -187,7 +183,6 @@
 <script setup lang="ts">
 interface Quarto {
   id?: number
-  numero: string
   bloco: string
   capacidade_maxima: number
   ocupacao_atual: number
@@ -209,7 +204,7 @@ const filters = reactive({
 })
 
 const roomForm = ref<Quarto>({
-  numero: '',
+
   bloco: '',
   capacidade_maxima: 4,
   ocupacao_atual: 0,
@@ -241,7 +236,7 @@ function openModal(quarto: Quarto | null = null) {
   } else {
     editingId.value = null
     roomForm.value = {
-      numero: '',
+
       bloco: '',
       capacidade_maxima: 4,
       ocupacao_atual: 0,
@@ -256,7 +251,6 @@ function closeModal() {
   showModal.value = false
   editingId.value = null
   roomForm.value = {
-    numero: '',
     bloco: '',
     capacidade_maxima: 4,
     ocupacao_atual: 0,
@@ -270,8 +264,7 @@ async function saveQuarto() {
   try {
     const url = editingId.value ? `/admin/quartos/${editingId.value}/` : '/admin/quartos/'
     const method = editingId.value ? 'PATCH' : 'POST'
-    const payload = { ...roomForm.value }
-    delete payload.ocupacao_atual
+    const { ocupacao_atual, ...payload } = roomForm.value
     await api(url, { method, body: payload })
     closeModal()
     await fetchQuartos()
@@ -285,7 +278,7 @@ async function saveQuarto() {
 }
 
 async function confirmDelete(quarto: Quarto) {
-  if (!confirm(`Deseja apagar o quarto ${quarto.numero}?`)) return
+  if (!confirm(`Deseja apagar o quarto ${quarto.bloco}?`)) return
   try {
     await api(`/admin/quartos/${quarto.id}/`, { method: 'DELETE' })
     await fetchQuartos()

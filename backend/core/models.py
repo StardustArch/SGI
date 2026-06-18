@@ -13,9 +13,10 @@ from .utils import gerar_codigo_acesso
 # ---------------------------------------------------------------------------
 class UtilizadorManager(BaseUserManager):
     def create_user(self, email=None, password=None, codigo_acesso=None, telefone=None, **extra_fields):
-        if not email:
-            email = ''
-        email = self.normalize_email(email)
+        if email == '':
+            email = None
+        if email is not None:
+            email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         if codigo_acesso:
@@ -64,7 +65,7 @@ class Perfil(models.Model):
 class Utilizador(AbstractUser):
     username = None
     email = models.EmailField(unique=True, blank=True, null=True)
-    perfil = models.ForeignKey(Perfil, on_delete=models.SET_NULL, null=True, blank=True)
+    perfis = models.ManyToManyField(Perfil, blank=True, related_name='perfis_m2m')  # novo, temporário
     codigo_acesso = models.CharField(max_length=20, unique=True, null=True, blank=True, verbose_name="Código de Acesso (estudantes)")
     telefone = models.CharField(max_length=20, unique=True, null=True, blank=True, verbose_name="Telefone (encarregados)")
 
@@ -76,9 +77,12 @@ class Utilizador(AbstractUser):
 
     objects = UtilizadorManager()
 
+    def tem_perfil(self, *nomes):
+        """Ex: user.tem_perfil('Gestor', 'Suporte')"""
+        return self.perfis.filter(nome_perfil__in=nomes).exists()
+
     def __str__(self):
         return self.codigo_acesso or self.telefone or self.email or str(self.pk)
-
 
 # ---------------------------------------------------------------------------
 # ENCARREGADO
@@ -182,7 +186,6 @@ class Quarto(models.Model):
         ('Inactivo', 'Inactivo'),
     ]
 
-    numero = models.CharField(max_length=10, unique=True)
     bloco = models.CharField(max_length=50)
     capacidade_maxima = models.PositiveIntegerField()
     genero_permitido = models.CharField(max_length=1, choices=GENERO_CHOICES)
@@ -194,7 +197,7 @@ class Quarto(models.Model):
         verbose_name_plural = "Quartos"
 
     def __str__(self):
-        return f"Quarto {self.numero} - {self.bloco} ({self.genero_permitido})"
+        return f"Bloco {self.bloco} - {self.genero_permitido}"
 
     @property
     def vagas_disponiveis(self):

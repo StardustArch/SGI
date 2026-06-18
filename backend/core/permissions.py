@@ -18,8 +18,8 @@ class IsAdminUser(permissions.BasePermission):
         return (
             request.user
             and request.user.is_authenticated
-            and request.user.perfil
-            and request.user.perfil.nome_perfil in self.PERFIS
+            and request.user.perfis
+            and request.user.perfis.filter(nome_perfil__in=self.PERFIS).exists()
         )
 
 
@@ -39,8 +39,8 @@ class IsAnyAdminUser(permissions.BasePermission):
         return (
             request.user
             and request.user.is_authenticated
-            and request.user.perfil
-            and request.user.perfil.nome_perfil in self.PERFIS
+            and request.user.perfis
+            and request.user.perfis.filter(nome_perfil__in=self.PERFIS).exists()
         )
 
 
@@ -55,8 +55,8 @@ class IsGestorOuSuporte(permissions.BasePermission):
         return (
             request.user
             and request.user.is_authenticated
-            and request.user.perfil
-            and request.user.perfil.nome_perfil in self.PERFIS
+            and request.user.perfis
+            and request.user.perfis.filter(nome_perfil__in=self.PERFIS).exists()
         )
 
 
@@ -71,8 +71,8 @@ class IsFinanceiroOuSuporte(permissions.BasePermission):
         return (
             request.user
             and request.user.is_authenticated
-            and request.user.perfil
-            and request.user.perfil.nome_perfil in self.PERFIS
+            and request.user.perfis
+            and request.user.perfis.filter(nome_perfil__in=self.PERFIS).exists()
         )
 
 
@@ -87,8 +87,8 @@ class IsDisciplinarOuSuporte(permissions.BasePermission):
         return (
             request.user
             and request.user.is_authenticated
-            and request.user.perfil
-            and request.user.perfil.nome_perfil in self.PERFIS
+            and request.user.perfis
+            and request.user.perfis.filter(nome_perfil__in=self.PERFIS).exists()
         )
 
 
@@ -103,8 +103,8 @@ class IsEstudanteUser(permissions.BasePermission):
         return (
             request.user
             and request.user.is_authenticated
-            and request.user.perfil
-            and request.user.perfil.nome_perfil == 'Estudante'
+            and request.user.perfis
+            and request.user.perfis.filter(nome_perfil__in=['Estudante']).exists()
         )
 
 
@@ -115,8 +115,8 @@ class IsEncarregadoUser(permissions.BasePermission):
         return (
             request.user
             and request.user.is_authenticated
-            and request.user.perfil
-            and request.user.perfil.nome_perfil == 'Encarregado'
+            and request.user.perfis
+            and request.user.perfis.filter(nome_perfil__in=['Encarregado']).exists()
         )
 
 

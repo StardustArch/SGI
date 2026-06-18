@@ -124,7 +124,7 @@
             <div class="flex items-center gap-2 text-sm">
               <BootstrapIcon name="door-closed" class="w-4 h-4 text-slate-400 shrink-0" />
               <span class="text-slate-700 dark:text-slate-300">
-                Quarto {{ aluno.quarto_numero || 'Não alocado' }}
+                Bloco {{ aluno.bloco || 'Não alocado' }}
               </span>
             </div>
             <div class="flex items-center gap-2 text-sm">
@@ -164,7 +164,7 @@
             <tr>
               <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Nome</th>
               <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Curso</th>
-              <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Quarto</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Bloco</th>
               <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Género</th>
               <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">Estado</th>
               <th class="px-4 py-3 text-left font-semibold text-slate-600 dark:text-slate-300">BI</th>
@@ -175,7 +175,7 @@
             <tr v-for="aluno in estudantesFiltrados" :key="aluno.utilizador_id" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
               <td class="px-4 py-3 font-medium text-slate-900 dark:text-white">{{ aluno.nome_completo }}</td>
               <td class="px-4 py-3 text-slate-700 dark:text-slate-300">{{ aluno.curso }}</td>
-              <td class="px-4 py-3 text-slate-700 dark:text-slate-300">{{ aluno.quarto_numero || '—' }}</td>
+              <td class="px-4 py-3 text-slate-700 dark:text-slate-300">{{ aluno.bloco || '—' }}</td>
               <td class="px-4 py-3 text-slate-700 dark:text-slate-300">{{ aluno.genero === 'M' ? 'Masculino' : 'Feminino' }}</td>
               <td class="px-4 py-3">
                 <span :class="['px-2 py-0.5 rounded-md text-xs font-medium border', getEstadoColor(aluno.estado)]">

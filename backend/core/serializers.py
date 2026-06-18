@@ -39,10 +39,12 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Utilizador
-        fields = ['id', 'email', 'first_name', 'last_name', 'perfil', 'perfil_nome', 'precisa_mudar_senha']
+        fields = ['id', 'email', 'first_name', 'last_name', 'perfil_nome', 'precisa_mudar_senha']
 
     def get_perfil_nome(self, obj):
-        return obj.perfil.nome_perfil if obj.perfil else None
+        # Retorna o nome do primeiro perfil (caso exista)
+        primeiro_perfil = obj.perfis.first()
+        return primeiro_perfil.nome_perfil if primeiro_perfil else None
 
     def get_precisa_mudar_senha(self, obj):
         return obj.check_password('mudar1234')
@@ -129,7 +131,6 @@ class RegistoCompletoSerializer(serializers.Serializer):
 # ---------------------------------------------------------------------------
 class EstudanteListSerializer(serializers.ModelSerializer):
     encarregado_nome = serializers.CharField(source='encarregado.nome_completo', read_only=True)
-    quarto_numero = serializers.CharField(source='quarto.numero', read_only=True, default='—')
     bloco = serializers.CharField(source='quarto.bloco', read_only=True)
 
     bi = serializers.CharField(read_only=True)
@@ -138,7 +139,7 @@ class EstudanteListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Estudante
         fields = [
-            'utilizador_id', 'nome_completo', 'quarto', 'quarto_numero',
+            'utilizador_id', 'nome_completo', 'quarto',
             'curso', 'estado', 'genero', 'encarregado_nome',
             'bi', 'telefone_pessoal', 'bloco'
         ]
@@ -156,33 +157,32 @@ class EncarregadoDetailSerializer(serializers.ModelSerializer):
 class EstudanteDetailSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='utilizador.codigo_acesso', read_only=True)
     encarregado_nome = serializers.CharField(source='encarregado.nome_completo', read_only=True)
-    quarto_numero = serializers.CharField(source='quarto.numero', read_only=True)
+    bloco = serializers.CharField(source='quarto.bloco', read_only=True)
     encarregado = EncarregadoDetailSerializer(read_only=True)
 
     class Meta:
         model = Estudante
         fields = [
-            'utilizador', 'email', 'nome_completo', 'genero', 'quarto', 'quarto_numero',
+            'utilizador', 'email', 'nome_completo', 'genero', 'quarto', 'bloco',
             'curso', 'estado', 'encarregado', 'encarregado_nome',
             'data_nascimento', 'bi', 'telefone_pessoal', 'email_pessoal',
             'morada', 'nome_mae', 'nome_pai',
             'nuit', 'ano_lectivo', 'nacionalidade', 'condicao_saude'  # NOVOS
         ]
-        read_only_fields = ['utilizador', 'email', 'encarregado_nome', 'quarto_numero', 'encarregado']
+        read_only_fields = ['utilizador', 'email', 'encarregado_nome', 'bloco', 'encarregado']
 
 
 class EstudantePerfilSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='utilizador.email', read_only=True)
     encarregado_nome = serializers.CharField(source='encarregado.nome_completo', read_only=True)
     encarregado_telefone = serializers.CharField(source='encarregado.telefone_principal', read_only=True)
-    quarto_numero = serializers.CharField(source='quarto.numero', read_only=True, default='—')
     quarto_bloco = serializers.CharField(source='quarto.bloco', read_only=True, default='—')
 
     class Meta:
         model = Estudante
         fields = [
             'utilizador_id', 'email', 'nome_completo',
-            'genero', 'quarto', 'quarto_numero', 'quarto_bloco',
+            'genero', 'quarto', 'quarto_bloco',
             'curso', 'estado', 'encarregado_nome', 'encarregado_telefone',
         ]
         read_only_fields = fields
@@ -197,11 +197,13 @@ class TransferirQuartoSerializer(serializers.Serializer):
 # ---------------------------------------------------------------------------
 class MensalidadeSerializer(serializers.ModelSerializer):
     esta_em_atraso = serializers.BooleanField(read_only=True)
+    nome_estudante = serializers.CharField(source='estudante.nome_completo', read_only=True)  # NOVO
+
 
     class Meta:
         model = Mensalidade
         fields = [
-            'id', 'estudante', 'mes_referencia', 'valor_pago',
+            'id', 'estudante', 'mes_referencia', 'nome_estudante', 'valor_pago',
             'data_pagamento_confirmado', 'metodo_pagamento',
             'referencia_comprovativo', 'estado', 'data_vencimento',
             'esta_em_atraso', 'numero_recibo', 'tipo'  # NOVO
@@ -238,13 +240,16 @@ class MensalidadeAdminListSerializer(serializers.ModelSerializer):
         return 'Pendente'
 
 
-class GerarMensalidadesLoteSerializer(serializers.Serializer):
-    mes_referencia = serializers.DateField()
-    valor_padrao = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, default=0.0)
+# serializers.py
 
-    def validate_mes_referencia(self, value):
-        if value > timezone.now().date():
-            raise serializers.ValidationError("Não é possível gerar mensalidades para meses futuros.")
+class GerarMensalidadesLoteSerializer(serializers.Serializer):
+    ano = serializers.IntegerField(min_value=2000, max_value=2100)
+    valor_padrao = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, default=2500.00)
+
+    def validate_ano(self, value):
+        ano_atual = timezone.now().year
+        if value > ano_atual:
+            raise serializers.ValidationError("Não é possível gerar mensalidades para um ano futuro.")
         return value
 
 
@@ -327,7 +332,7 @@ class PedidoSaidaListAdminSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'estudante_nome', 'estudante',
             'data_submissao', 'data_saida_pretendida',
-            'data_retorno_pretendida', 'motivo', 'estado',
+            'data_retorno_pretendida', 'motivo', 'estado', 'motivo_rejeicao',
         ]
 
 
@@ -392,7 +397,65 @@ class QuartoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quarto
         fields = [
-            'id', 'numero', 'bloco', 'capacidade_maxima',
+            'id', 'bloco', 'capacidade_maxima',
             'genero_permitido', 'estado', 'ocupacao_atual', 'vagas_disponiveis',
         ]
         read_only_fields = ['ocupacao_atual', 'vagas_disponiveis']
+
+
+class CriarUtilizadorStaffSerializer(serializers.Serializer):
+    nome_completo = serializers.CharField(max_length=255)
+    email = serializers.EmailField()
+    perfis = serializers.ListField(
+        child=serializers.ChoiceField(choices=['Gestor', 'Financeiro', 'Disciplinar', 'Suporte']),
+        allow_empty=False,
+    )
+
+    def validate_email(self, value):
+        User = get_user_model()
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Já existe um utilizador com este email.")
+        return value
+
+    def validate_perfis(self, value):
+        if len(set(value)) != len(value):
+            raise serializers.ValidationError("Perfis repetidos na lista.")
+        return value
+
+
+# serializers.py (acrescentar)
+
+class UserListAdminSerializer(serializers.ModelSerializer):
+    perfis_nomes = serializers.SerializerMethodField()
+    nome_completo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Utilizador
+        fields = ['id', 'email', 'first_name', 'last_name', 'nome_completo',
+                  'is_active', 'date_joined', 'perfis_nomes']
+
+    def get_perfis_nomes(self, obj):
+        return list(obj.perfis.filter(nome_perfil__in=['Gestor','Financeiro','Disciplinar','Suporte'])
+                    .values_list('nome_perfil', flat=True))
+
+    def get_nome_completo(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip() or obj.email
+
+
+class UserUpdateAdminSerializer(serializers.ModelSerializer):
+    perfis_nomes = serializers.ListField(
+        child=serializers.ChoiceField(choices=['Gestor','Financeiro','Disciplinar','Suporte']),
+        write_only=True, required=False
+    )
+
+    class Meta:
+        model = Utilizador
+        fields = ['id', 'email', 'first_name', 'last_name', 'is_active', 'perfis_nomes']
+        read_only_fields = ['id', 'email']  # email não pode mudar
+
+    def update(self, instance, validated_data):
+        perfis_nomes = validated_data.pop('perfis_nomes', None)
+        if perfis_nomes is not None:
+            perfis_obj = Perfil.objects.filter(nome_perfil__in=perfis_nomes)
+            instance.perfis.set(perfis_obj)
+        return super().update(instance, validated_data)

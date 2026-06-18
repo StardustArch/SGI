@@ -192,7 +192,6 @@ const estudantesLista = computed(() => {
   if (!raw) return []
   return raw.results ?? raw
 })
-
 // Mapeia ID -> nome para usar na listagem
 const nomeEstudanteMap = computed(() => {
   const map: Record<number, string> = {}
@@ -211,7 +210,7 @@ const sancoesLista = computed(() => {
   if (!raw) return []
   return raw.results ?? raw
 })
-
+console.log(sancoesLista)
 async function submitSancao() {
   // Validações estritas anti-inundação de dados ou bypass de HTML
   if (!form.estudante) {

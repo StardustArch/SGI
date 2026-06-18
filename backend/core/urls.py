@@ -20,6 +20,14 @@ urlpatterns = [
     path('auth/password-reset-confirm/', views.PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
 
     # =========================================================================
+    # UTILIZADORES INTERNOS (admin)
+    # =========================================================================
+    path('admin/utilizadores/criar/', views.CriarUtilizadorStaffView.as_view(), name='admin-criar-utilizador'),
+    path('admin/utilizadores/', views.AdminUtilizadorListView.as_view(), name='admin-utilizador-list'),
+    path('admin/utilizadores/<int:pk>/', views.AdminUtilizadorDetailView.as_view(), name='admin-utilizador-detail'),
+    path('admin/utilizadores/<int:pk>/toggle-active/', views.AdminUtilizadorToggleActiveView.as_view(), name='admin-utilizador-toggle'),
+
+    # =========================================================================
     # REGISTO
     # =========================================================================
     path('admin/registar/', views.RegistoCompletoView.as_view(), name='admin-registar'),
