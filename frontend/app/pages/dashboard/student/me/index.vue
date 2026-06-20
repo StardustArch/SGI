@@ -87,11 +87,11 @@
               <div class="text-right shrink-0">
                 <p :class="item.estado === 'Pago' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'">{{ formatMoeda(item.valor_pago) }}</p>
                 <span :class="[
-                  'text-xs px-2 py-0.5 rounded-md font-medium',
-                  item.estado === 'Pago' 
-                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' 
-                    : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                ]">{{ item.estado }}</span>
+  'text-xs px-2 py-0.5 rounded-md font-medium',
+  item.estado_display === 'Pago' ? 'bg-emerald-50 text-emerald-700 ...' :
+  item.estado_display === 'Atraso' ? 'bg-rose-50 text-rose-700 ...' :
+  'bg-amber-50 text-amber-700 ...'
+]">{{ item.estado_display }}</span>
               </div>
             </div>
           </div>
@@ -172,10 +172,14 @@
           <div class="bg-slate-50 dark:bg-slate-800/50 p-5 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700">
             <h3 class="text-base font-semibold text-slate-900 dark:text-white mb-5 border-b border-slate-200 dark:border-slate-700 pb-3">Nova Solicitação de Saída</h3>
             <form @submit.prevent="criarPedido" class="space-y-4">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <input v-model="novoPedido.data_saida_pretendida" type="date" required class="input" />
-                <input v-model="novoPedido.data_retorno_pretendida" type="date" required class="input" />
-              </div>
+              <div class="space-y-2">
+  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Data de Saída *</label>
+  <input v-model="novoPedido.data_saida_pretendida" type="date" required class="input" />
+</div>
+<div class="space-y-2">
+  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Data de Regresso *</label>
+  <input v-model="novoPedido.data_retorno_pretendida" type="date" required class="input" />
+</div>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <input v-model="novoPedido.destino" type="text" placeholder="Destino (ex: Casa)" class="input" />
                 <input v-model="novoPedido.cidade_destino" type="text" placeholder="Cidade" class="input" />
@@ -247,7 +251,7 @@ const perfil = ref<any>(null)
 // Financeiro
 const mensalidades = ref<any[]>([])
 const loadingFin = ref(false)
-const finStats = reactive({ total_pago: 0, pendentes: 0 })
+const finStats = reactive({ total_pago: 0, pendentes: 0 , atraso: 0 })
 
 // Presenças
 const presencas = ref<any[]>([])
@@ -302,7 +306,13 @@ onMounted(async () => {
     pedidos.value = saidasRes.results || saidasRes
 
     // Calcular stats financeiras
-    const pagos = mensalidades.value.filter((m: any) => m.estado === 'Pago')
+    // Calcular corretamente
+const pagos = mensalidades.value.filter(m => m.estado_display === 'Pago')
+const pendentes = mensalidades.value.filter(m => m.estado_display === 'Pendente')
+const atraso = mensalidades.value.filter(m => m.estado_display === 'Atraso')
+finStats.total_pago = pagos.reduce((acc, m) => acc + Number(m.valor_pago), 0)
+finStats.pendentes = pendentes.length
+finStats.atraso = atraso.length  // se quiser exibir separadamente
     finStats.total_pago = pagos.reduce((acc: number, m: any) => acc + Number(m.valor_pago), 0)
     finStats.pendentes = mensalidades.value.filter((m: any) => m.estado !== 'Pago').length
   } catch (e) {
@@ -312,11 +322,30 @@ onMounted(async () => {
   }
 })
 
+
 // Criar pedido de saída
 async function criarPedido() {
   criando.value = true
-  msgSucesso.value = ''
   msgErro.value = ''
+  const hoje = new Date().toISOString().split('T')[0]
+  const saida = novoPedido.data_saida_pretendida
+  const retorno = novoPedido.data_retorno_pretendida
+
+  if (!saida || !retorno) {
+    msgErro.value = 'Preencha as datas de saída e regresso.'
+    criando.value = false
+    return
+  }
+  if (saida < hoje) {
+    msgErro.value = 'A data de saída não pode ser no passado.'
+    criando.value = false
+    return
+  }
+  if (retorno <= saida) {
+    msgErro.value = 'A data de regresso deve ser posterior à data de saída.'
+    criando.value = false
+    return
+  }
   try {
     await api('/student/exits/', { method: 'POST', body: novoPedido })
     msgSucesso.value = 'Pedido enviado com sucesso!'

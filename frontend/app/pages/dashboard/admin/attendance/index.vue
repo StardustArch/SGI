@@ -96,7 +96,7 @@
           <div class="min-w-0">
             <h3 class="font-semibold text-slate-900 dark:text-white truncate">{{ aluno.nome_completo }}</h3>
             <p class="text-xs text-slate-500 dark:text-slate-400">
-              Quarto {{ aluno.quarto_numero || 'N/A' }} <span v-if="aluno.bloco">({{ aluno.bloco }})</span>
+              Bloco <span v-if="aluno.bloco">{{ aluno.bloco }}</span>
             </p>
           </div>
         </div>
@@ -137,15 +137,6 @@
             title="Justificado"
           >
             <BootstrapIcon name="info-lg" class="w-4 h-4" />
-          </button>
-          <button 
-            @click="navigateTo(`/dashboard/admin/students/${aluno.utilizador_id}/historic?tab=Presenças`)"
-            class="p-2 hover:bg-stone-100 rounded-lg text-stone-400 hover:text-blue-500 transition-colors"
-            title="Ver histórico de presenças"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
           </button>
         </div>
       </div>

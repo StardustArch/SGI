@@ -149,13 +149,14 @@
                 <p class="text-xs text-slate-500 dark:text-slate-400">{{ item.tipo || 'Mensalidade' }}</p>
               </div>
               <div class="text-right">
-                <p :class="item.estado === 'Pago' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'">{{ formatMoeda(item.valor_pago) }}</p>
-                <span :class="[
-                  'text-xs px-2 py-0.5 rounded-md font-medium',
-                  item.estado === 'Pago' 
-                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' 
-                    : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                ]">{{ item.estado }}</span>
+<p :class="item.estado_display === 'Pago' ? 'text-emerald-600 dark:text-emerald-400' : (item.estado_display === 'Atraso' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400')">
+  {{ formatMoeda(item.valor_pago) }}
+</p>               <span :class="[
+  'text-xs px-2 py-0.5 rounded-md font-medium',
+  item.estado_display === 'Pago' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' :
+  item.estado_display === 'Atraso' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' :
+  'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+]">{{ item.estado_display }}</span>
               </div>
             </div>
           </div>
@@ -217,7 +218,7 @@ const { data: perfilData, pending: pendingPerfil } = await useAsyncData(
   async () => {
     const [estudante, finStats, presencasList, sancoesList] = await Promise.all([
       api<any>(`/guardian/students/${studentId}/`),
-      api<any>(`/guardian/financial/summary/?estudante=${studentId}`).catch(() => ({ faturas_pendentes: 0, faturas_atraso: 0 })),
+      api<any>(`/guardian/financial/summary/?estudante=${studentId}`).catch(() => ({ faturas_em_dia: 0, faturas_atraso: 0 })),
       api<any>(`/guardian/attendance/?estudante=${studentId}&page_size=1`).catch(() => ({ results: [] })),
       api<any>(`/guardian/discipline/?estudante=${studentId}&page_size=1`).catch(() => ({ count: 0 }))
     ])
@@ -226,10 +227,10 @@ const { data: perfilData, pending: pendingPerfil } = await useAsyncData(
 )
 
 const estudante = computed(() => perfilData.value?.estudante)
-const dividaTotal = computed(() => (perfilData.value?.finStats?.faturas_pendentes || 0) + (perfilData.value?.finStats?.faturas_atraso || 0))
+const dividaTotal = computed(() => (perfilData.value?.finStats?.faturas_pendentes || 0))
 const ultimaPresenca = computed(() => perfilData.value?.ultimaPresenca)
 const totalSancoes = computed(() => perfilData.value?.totalSancoes)
-
+console.log('Perfil do estudante:', perfilData)
 // Dados para as abas (carregados sob demanda)
 const mensalidades = ref<any[]>([])
 const presencas = ref<any[]>([])
@@ -247,6 +248,7 @@ async function carregarFinanceiro() {
   } catch (e) { console.error(e) } 
   finally { loadingFinanceiro.value = false }
 }
+console.log('Mensalidades carregadas:', loadingFinanceiro)
 
 async function carregarPresencas() {
   if (presencas.value.length > 0) return

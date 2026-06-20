@@ -259,7 +259,7 @@ def notificar_admins_novo_pedido(sender, instance, created, **kwargs):
 
     # Notificar todos os admins com email cadastrado
     admin_emails = list(
-        Utilizador.objects.filter(perfil__nome_perfil__in=["Gestor", "Suporte"])
+        Utilizador.objects.filter(perfis__nome_perfil__in=["Gestor", "Suporte"])
         .exclude(email="")
         .values_list("email", flat=True)
     )

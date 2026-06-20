@@ -195,8 +195,8 @@ class TransferirQuartoSerializer(serializers.Serializer):
 # ---------------------------------------------------------------------------
 class MensalidadeSerializer(serializers.ModelSerializer):
     esta_em_atraso = serializers.BooleanField(read_only=True)
-    nome_estudante = serializers.CharField(source='estudante.nome_completo', read_only=True)  # NOVO
-
+    nome_estudante = serializers.CharField(source='estudante.nome_completo', read_only=True)
+    estado_display = serializers.SerializerMethodField()  # NOVO
 
     class Meta:
         model = Mensalidade
@@ -204,10 +204,17 @@ class MensalidadeSerializer(serializers.ModelSerializer):
             'id', 'estudante', 'mes_referencia', 'nome_estudante', 'valor_pago',
             'data_pagamento_confirmado', 'metodo_pagamento',
             'referencia_comprovativo', 'estado', 'data_vencimento',
-            'esta_em_atraso', 'numero_recibo', 'tipo'  # NOVO
+            'esta_em_atraso', 'numero_recibo', 'tipo', 'estado_display'  # adicionado
         ]
         read_only_fields = ['estudante', 'esta_em_atraso', 'data_vencimento', 'numero_recibo']
 
+    def get_estado_display(self, obj):
+        if obj.estado == 'Pago':
+            return 'Pago'
+        hoje = timezone.now().date()
+        if obj.data_vencimento and obj.data_vencimento < hoje:
+            return 'Atraso'
+        return 'Pendente'
 
 class MensalidadeUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -320,6 +327,14 @@ class PedidoSaidaSerializer(serializers.ModelSerializer):
             'estudante', 'data_submissao', 'estado',
             'admin_id_aprovacao', 'observacao_admin', 'motivo_rejeicao'  # estudante não pode editar motivo de rejeição
         ]
+    def validate(self, data):
+        saida = data.get('data_saida_pretendida')
+        retorno = data.get('data_retorno_pretendida')
+        if saida and retorno and retorno <= saida:
+            raise serializers.ValidationError("Data de regresso deve ser posterior à data de saída.")
+        if saida and saida < timezone.now().date():
+            raise serializers.ValidationError("Data de saída não pode ser no passado.")
+        return data
 
 
 class PedidoSaidaListAdminSerializer(serializers.ModelSerializer):

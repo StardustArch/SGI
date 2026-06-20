@@ -146,9 +146,9 @@
         </div>
         <div class="flex items-center gap-3">
           <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ formatMoeda(item.valor_pago || 2500) }}</span>
-          <span :class="['px-2.5 py-0.5 rounded-md text-xs font-medium border', getStatusBadge(item.estado)]">
-            {{ item.estado }}
-          </span>
+          <span :class="['px-2.5 py-0.5 rounded-md text-xs font-medium border', getStatusBadge(item.estado_display || item.estado)]">
+  {{ item.estado_display || item.estado }}
+</span>
           <NuxtLink :to="`/dashboard/admin/finance/confirm/${item.id}`" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
             Confirmar
           </NuxtLink>
@@ -228,14 +228,16 @@ const stats = computed(() => dashboard.value?.finance)
 const { data: mensalidades } = await useAsyncData(
   'admin-fin-list',
   () => {
-    const params: any = {}
+    const params: any = {
+      page_size: 999, // 👈 carrega todas de uma vez
+    }
     if (filtroEstado.value) params.estado = filtroEstado.value
     if (pesquisa.value) params.search = pesquisa.value
     return api<any>('/admin/financeiro/mensalidades/', { params })
   },
   { watch: [pesquisa, filtroEstado] }
 )
-
+console.log('mensalidades', mensalidades)
 const listaFiltrada = computed(() => mensalidades.value?.results || mensalidades.value || [])
 
 // --- Agrupamento por estudante ---
@@ -250,8 +252,7 @@ interface GrupoEstudante {
 }
 
 const estudantesAgrupados = computed<GrupoEstudante[]>(() => {
-  const mapa = new Map<string | number, GrupoEstudante>()
-
+  const mapa = new Map()
   for (const item of listaFiltrada.value) {
     const chave = item.estudante_id ?? item.nome_estudante
     if (!mapa.has(chave)) {
@@ -268,22 +269,21 @@ const estudantesAgrupados = computed<GrupoEstudante[]>(() => {
     const grupo = mapa.get(chave)!
     grupo.mensalidades.push(item)
 
-    if (item.estado === 'Pago') grupo.totalPago++
-    else if (item.estado === 'Atraso') grupo.totalAtraso++
+    const estadoExibicao = item.estado_display || item.estado
+    if (estadoExibicao === 'Pago') grupo.totalPago++
+    else if (estadoExibicao === 'Atraso') grupo.totalAtraso++
     else grupo.totalPendente++
   }
 
-for (const grupo of mapa.values()) {
-  grupo.mensalidades.sort(
-    (a, b) => new Date(a.mes_referencia).getTime() - new Date(b.mes_referencia).getTime()
-  )
-  grupo.estadoGeral = grupo.totalAtraso > 0 ? 'Atraso' : grupo.totalPendente > 0 ? 'Pendente' : 'Pago'
-  // todos os grupos começam colapsados
-  if (expandido[grupo.id] === undefined) {
-    expandido[grupo.id] = false
+  for (const grupo of mapa.values()) {
+    grupo.mensalidades.sort(
+      (a, b) => new Date(a.mes_referencia) - new Date(b.mes_referencia)
+    )
+    grupo.estadoGeral = grupo.totalAtraso > 0 ? 'Atraso' : grupo.totalPendente > 0 ? 'Pendente' : 'Pago'
+    if (expandido[grupo.id] === undefined) {
+      expandido[grupo.id] = false
+    }
   }
-}
-
   return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome))
 })
 

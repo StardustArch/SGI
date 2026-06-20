@@ -239,9 +239,9 @@ class RegistoCompletoView(generics.CreateAPIView):
                         email=dados_enc.get('email', ''),
                         password=SENHA_PADRAO,
                         first_name=dados_enc['nome_completo'],
-                        perfil=perfil_enc,
                         telefone=dados_enc['telefone_principal']   # <-- telefone como identificador
                     )
+                    user_enc.perfis.set([perfil_enc])
                     encarregado_obj.utilizador = user_enc
                     encarregado_obj.save(update_fields=['utilizador'])
 
@@ -253,9 +253,9 @@ class RegistoCompletoView(generics.CreateAPIView):
                     email=email_estudante,
                     password=SENHA_PADRAO,
                     first_name=dados_est['nome_completo'],
-                    perfil=perfil_est,
                     # não passamos telefone nem código – o manager gera código
                 )
+                user_est.perfis.set([perfil_est])
 
                 estudante = Estudante.objects.create(
                     utilizador=user_est,
@@ -444,7 +444,22 @@ class GerarMensalidadesLoteView(APIView):
 
         with transaction.atomic():
             for estudante in estudantes_ativos:
-                for mes in range(1, 13):  # Janeiro a Dezembro
+                # Data de entrada do estudante (usando a data de criação do utilizador)
+                data_entrada = estudante.utilizador.date_joined.date()
+                mes_inicio = data_entrada.month
+                ano_inicio = data_entrada.year
+
+                # Ajustar mês inicial conforme o ano alvo
+                if ano_inicio < ano:
+                    mes_inicio = 1  # entrou antes do ano alvo → começa em Janeiro
+                elif ano_inicio == ano:
+                    mes_inicio = data_entrada.month  # entrou neste ano → começa no mês de entrada
+                else:
+                    # Se entrou depois do ano alvo (não deveria acontecer com activos), saltar
+                    continue
+
+                # Gerar mensalidades de mes_inicio até Dezembro do ano alvo
+                for mes in range(mes_inicio, 13):
                     mes_referencia = date(ano, mes, 1)
                     _, created = Mensalidade.objects.get_or_create(
                         estudante=estudante,
@@ -453,7 +468,7 @@ class GerarMensalidadesLoteView(APIView):
                             'estado': 'Pendente',
                             'valor_pago': valor,
                             'admin_id_registo': request.user,
-                            'tipo': 'Mensalidade'  # ou pode ser configurável
+                            'tipo': 'Mensalidade'
                         }
                     )
                     if created:
@@ -467,7 +482,6 @@ class GerarMensalidadesLoteView(APIView):
             "mensalidades_criadas": criados,
             "ja_existiam": ignorados,
         }, status=status.HTTP_201_CREATED)
-
 # ---------------------------------------------------------------------------
 # RECIBO PDF
 # FIX: modelo Recibo eliminado — campos numero_recibo e arquivo_pdf em Mensalidade
@@ -1289,24 +1303,24 @@ class EncarregadoFinanceiroStatsView(APIView):
         estudantes = Estudante.objects.filter(encarregado=request.user.encarregado_profile)
         mensalidades = Mensalidade.objects.filter(estudante__in=estudantes)
         hoje = timezone.now().date()
-        total_pago = mensalidades.filter(estado='Pago').aggregate(
-            s=Sum('valor_pago'))['s'] or 0
-        faturas_pendentes = mensalidades.filter(estado='Pendente').count()
-        # FIX: 'Atraso' calculado correctamente — não é estado persistido
-        faturas_atraso = mensalidades.filter(
-            estado='Pendente', data_vencimento__lt=hoje
-        ).count()
+
+        total_pago = mensalidades.filter(estado='Pago').aggregate(s=Sum('valor_pago'))['s'] or 0
+
+        pendentes = mensalidades.filter(estado='Pendente')
+        faturas_pendentes = pendentes.count()
+        faturas_atraso = pendentes.filter(data_vencimento__lt=hoje).count()
+        faturas_em_dia = faturas_pendentes - faturas_atraso
 
         return Response({
             "total_pago": total_pago,
-            "faturas_pendentes": faturas_pendentes,
-            "faturas_atraso": faturas_atraso,
+            "faturas_pendentes": faturas_pendentes,          # total de pendentes
+            "faturas_em_dia": faturas_em_dia,                # pendentes não vencidas
+            "faturas_atraso": faturas_atraso,                # pendentes vencidas
             "moeda": "MZN",
         })
 
 
 class EncarregadoSancaoListView(generics.ListAPIView):
-    """Encarregado vê as sanções dos seus educandos."""
     serializer_class = SancaoSerializer
     permission_classes = [IsAuthenticated, IsEncarregadoUser]
     pagination_class = StandardResultsSetPagination
@@ -1318,8 +1332,10 @@ class EncarregadoSancaoListView(generics.ListAPIView):
         ids = Estudante.objects.filter(
             encarregado=self.request.user.encarregado_profile
         ).values_list('pk', flat=True)
-        return Sancao.objects.filter(estudante_id__in=ids)
-
+        return Sancao.objects.filter(
+            estudante_id__in=ids,
+            notificado_encarregado=True  # <-- FILTRO
+        )
 
 class EncarregadoPresencaListView(generics.ListAPIView):
     """Encarregado vê o histórico de presenças dos seus educandos."""
