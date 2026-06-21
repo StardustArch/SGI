@@ -278,7 +278,9 @@
       <!-- Card do Encarregado -->
       <section v-if="encarregado" class="bg-white dark:bg-slate-900 rounded-xl p-5 md:p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
         <NuxtLink 
-          :to="`/dashboard/admin/guardian/${encarregado.id}`" 
+
+  :to="`/dashboard/admin/guardian/${encarregado.id}?student=${route.params.id}`"
+
           class="flex items-center gap-4 group hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg p-3 -m-3 transition-colors"
         >
           <div class="h-12 w-12 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold border border-blue-100 dark:border-blue-800">
