@@ -118,6 +118,7 @@ class EstudanteRegistoSerializer(serializers.Serializer):
     ano_lectivo = serializers.CharField(max_length=9, required=False, allow_blank=True, allow_null=True)
     nacionalidade = serializers.CharField(max_length=50, required=False, allow_blank=True, allow_null=True)
     condicao_saude = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
 class RegistoCompletoSerializer(serializers.Serializer):
     encarregado = EncarregadoRegistoSerializer()
     estudante = EstudanteRegistoSerializer()
@@ -130,18 +131,29 @@ class RegistoCompletoSerializer(serializers.Serializer):
 class EstudanteListSerializer(serializers.ModelSerializer):
     encarregado_nome = serializers.CharField(source='encarregado.nome_completo', read_only=True)
     bloco = serializers.CharField(source='quarto.bloco', read_only=True)
-
+    data_entrada = serializers.SerializerMethodField()
     bi = serializers.CharField(read_only=True)
     telefone_pessoal = serializers.CharField(read_only=True)
 
     class Meta:
         model = Estudante
         fields = [
-            'utilizador_id', 'nome_completo', 'quarto',
-            'curso', 'estado', 'genero', 'encarregado_nome',
-            'bi', 'telefone_pessoal', 'bloco'
+            'utilizador_id',
+            'nome_completo',
+            'quarto',
+            'ano_lectivo',
+            'data_entrada',
+            'curso',
+            'estado',
+            'genero',
+            'encarregado_nome',
+            'bi',
+            'telefone_pessoal',
+            'bloco',
         ]
 
+    def get_data_entrada(self, obj):
+        return obj.utilizador.date_joined.strftime("%d/%m/%Y")
 
 class EncarregadoDetailSerializer(serializers.ModelSerializer):
     class Meta:

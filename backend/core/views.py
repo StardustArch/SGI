@@ -273,7 +273,6 @@ class RegistoCompletoView(generics.CreateAPIView):
                     nome_pai=dados_est.get('nome_pai', None),
                     # NOVOS CAMPOS
                     nuit=dados_est.get('nuit', None),
-                    ano_lectivo=dados_est.get('ano_lectivo', '2025/2026'),
                     nacionalidade=dados_est.get('nacionalidade', 'Moçambicana'),
                     condicao_saude=dados_est.get('condicao_saude', None),
                 )

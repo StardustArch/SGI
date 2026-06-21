@@ -139,6 +139,7 @@ class Estudante(models.Model):
         blank=True,
         related_name='estudantes'
     )
+    ano_lectivo = models.PositiveIntegerField(default=date.today().year)
     nome_completo = models.CharField(max_length=255)
     genero = models.CharField(max_length=1, choices=GENERO_CHOICES)
     quarto = models.ForeignKey('Quarto', on_delete=models.SET_NULL, null=True, blank=True, related_name='estudantes')
@@ -155,7 +156,6 @@ class Estudante(models.Model):
 
     # NOVOS CAMPOS
     nuit = models.CharField(max_length=20, blank=True, null=True, verbose_name="NUIT")
-    ano_lectivo = models.CharField(max_length=9, default='2025/2026', verbose_name="Ano Lectivo")
     nacionalidade = models.CharField(max_length=50, default='Moçambicana', blank=True)
     condicao_saude = models.TextField(blank=True, null=True, verbose_name="Condições de Saúde")
 
@@ -166,6 +166,8 @@ class Estudante(models.Model):
         # FIX: cálculo exato com relativedelta
         idade = relativedelta(date.today(), self.data_nascimento).years
         return idade >= 18
+
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

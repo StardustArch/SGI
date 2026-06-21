@@ -133,7 +133,7 @@
             </div>
             <div class="flex items-center gap-2 text-sm">
               <BootstrapIcon name="calendar" class="w-4 h-4 text-slate-400 shrink-0" />
-              <span class="text-slate-700 dark:text-slate-300">{{ aluno.ano_lectivo || '2025/2026' }}</span>
+              <span class="text-slate-700 dark:text-slate-300">{{ aluno.data_entrada || 'S/D' }}</span>
             </div>
           </div>
 
@@ -229,7 +229,7 @@ const { data: estudantes, pending, error, refresh } = await useAsyncData<Estudan
   () => api<Estudante[]>('/admin/estudantes/'),
   { server: false }
 )
-
+console.log(estudantes)
 // Extrair cursos únicos para o dropdown
 const cursosUnicos = computed(() => {
   if (!estudantes.value) return []

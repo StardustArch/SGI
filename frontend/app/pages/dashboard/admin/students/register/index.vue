@@ -126,21 +126,7 @@
             </p>
           </div>
 
-          <!-- Ano Lectivo -->
-          <div>
-            <label class="label">Ano Lectivo *</label>
-            <select v-model="form.estudante.ano_lectivo" class="input"
-              :class="{ 'border-red-500 focus:ring-red-500': errors.ano_lectivo }" data-field="ano_lectivo"
-              @change="validateField('ano_lectivo')">
-              <option value="2024/2025">2024/2025</option>
-              <option value="2025/2026" selected>2025/2026</option>
-              <option value="2026/2027">2026/2027</option>
-            </select>
-            <p v-if="errors.ano_lectivo" class="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
-              <BootstrapIcon name="exclamation-circle" class="w-3.5 h-3.5" />
-              {{ errors.ano_lectivo }}
-            </p>
-          </div>
+
 
           <!-- Nacionalidade -->
           <div>
