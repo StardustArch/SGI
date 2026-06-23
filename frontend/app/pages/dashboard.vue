@@ -254,7 +254,7 @@ watch([userData, () => route.path], ([newUser, newPath]) => {
     if (perfis.value.some((p: string) => ['Gestor', 'Financeiro', 'Disciplinar', 'Suporte'].includes(p))) {
       destino = '/dashboard/admin/me'
     } else if (perfis.value.includes('Estudante')) {
-      destino = '/dashboard/student/me'
+      destino = '/dashboard/student/me/security'
     } else if (perfis.value.includes('Encarregado')) {
       destino = '/dashboard/guardian/me'
     }
